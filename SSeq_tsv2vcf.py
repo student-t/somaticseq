@@ -314,13 +314,13 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
         
         field_string = 'GT:DP4:CD4:refMQ:altMQ:refBQ:altBQ:refNM:altNM:fetSB:fetCD:zMQ:zBQ:MQ0:VAF:{}:NUM_TOOLS:SCORE'.format(mvjsdu)
 
-        tumor_sample_string = '{GT}:{DP4}:{CD4}:{refMQ}:{altMQ}:{refBQ}:{altBQ}:{refNM}:{altNM}:{fetSB}:{fetCD}:{zMQ}:{zBQ}:{MQ0}:{VAF}:{MVJSD}:{NUM_TOOLS}:{SCORE}'.format(GT=gt, DP4=dp4_string, CD4=cd4_string, refMQ=t_ref_mq, altMQ=t_alt_mq, refBQ=t_ref_bq, altBQ=t_alt_bq, refNM=t_ref_nm, altNM=t_alt_nm, fetSB=t_sb, fetCD=t_cd, zMQ=t_mqb, zBQ=t_bqb, MQ0=t_MQ0, VAF=vaf, MVJSD=MVJS, NUM_TOOLS=num_tools, SCORE=scaled_score)
+        tumor_sample_string = '{GT}:{DP4}:{CD4}:{refMQ}:{altMQ}:{refBQ}:{altBQ}:{refNM}:{altNM}:{fetSB}:{fetCD}:{zMQ}:{zBQ}:{MQ0}:{VAF}:{MVJSD}:{NUM_TOOLS}:{SCORE}'.format(GT=gt, DP4=dp4_string, CD4=cd4_string, refMQ=t_ref_mq, altMQ=t_alt_mq, refBQ=t_ref_bq, altBQ=t_alt_bq, refNM=t_ref_nm, altNM=t_alt_nm, fetSB=t_sb, fetCD=t_cd, zMQ=t_mqb, zBQ=t_bqb, MQ0=t_MQ0, VAF=vaf, MVJSD=MVJS, NUM_TOOLS=num_tools, SCORE='%.3f' % scaled_score)
         
         
         # PASS
         if score >= pass_score or (score is nan and num_tools > 0.5*total_num_tools):
             
-            vcf_line = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format( tsv_item[CHROM], tsv_item[POS], tsv_item[ID], tsv_item[REF], tsv_item[ALT], '%.4f' % scaled_score, 'PASS', 'SOMATIC', field_string)
+            vcf_line = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format( tsv_item[CHROM], tsv_item[POS], tsv_item[ID], tsv_item[REF], tsv_item[ALT], '%.3f' % scaled_score, 'PASS', 'SOMATIC', field_string)
             
             if single_mode:
                 vcf_line = vcf_line + '\t' + tumor_sample_string
@@ -332,7 +332,7 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
         # Low Qual
         elif score >= lowqual_score or (score is nan and num_tools >= 1 and num_tools >= 0.33*total_num_tools):
                                         
-            vcf_line = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format( tsv_item[CHROM], tsv_item[POS], tsv_item[ID], tsv_item[REF], tsv_item[ALT], '%.4f' % scaled_score, 'LowQual', info_string, field_string)
+            vcf_line = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format( tsv_item[CHROM], tsv_item[POS], tsv_item[ID], tsv_item[REF], tsv_item[ALT], '%.3f' % scaled_score, 'LowQual', info_string, field_string)
             
             if single_mode:
                 vcf_line = vcf_line + '\t' + tumor_sample_string
@@ -344,7 +344,7 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
         # REJECT
         elif print_reject:
             
-            vcf_line = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format( tsv_item[CHROM], tsv_item[POS], tsv_item[ID], tsv_item[REF], tsv_item[ALT], '%.4f' % scaled_score, 'REJECT', info_string, field_string)
+            vcf_line = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format( tsv_item[CHROM], tsv_item[POS], tsv_item[ID], tsv_item[REF], tsv_item[ALT], '%.3f' % scaled_score, 'REJECT', info_string, field_string)
 
             if single_mode:
                 vcf_line = vcf_line + '\t' + tumor_sample_string
