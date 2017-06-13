@@ -174,7 +174,7 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
     vcf.write('##FORMAT=<ID=MQ0,Number=1,Type=Integer,Description="Number of reads with mapping quality of 0">\n')
     vcf.write('##FORMAT=<ID=VAF,Number=1,Type=Float,Description="Variant Allele Frequency">\n')
     vcf.write('##FORMAT=<ID={COMBO},Number={NUM},Type=Integer,Description="Calling decision of the {NUM} algorithms: {TOOL_STRING}">\n'.format(COMBO=mvjsdu, NUM=total_num_tools, TOOL_STRING=tool_string) )
-    vcf.write('##FORMAT=<ID=NUM_TOOLS,Number=1,Type=Float,Description="Number of tools called it Somatic">\n')
+    vcf.write('##FORMAT=<ID=NUM_TOOLS,Number=.,Type=Float,Description="Number of tools called it Somatic">\n')
     vcf.write('##FORMAT=<ID=SCORE,Number=1,Type=Float,Description="SomaticSeq Probability (either fraction or Phred)">\n')
     
     if single_mode:
@@ -266,7 +266,7 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
                 vaf = 0
             vaf = '%.3g' % vaf
             
-            normal_sample_string = '{GT}:{DP4}:{CD4}:{refMQ}:{altMQ}:{refBQ}:{altBQ}:{refNM}:{altNM}:{fetSB}:{fetCD}:{zMQ}:{zBQ}:{MQ0}:{VAF}'.format(GT=gt, DP4=dp4_string, CD4=cd4_string, refMQ=n_ref_mq, altMQ=n_alt_mq, refBQ=n_ref_bq, altBQ=n_alt_bq, refNM=n_ref_nm, altNM=n_alt_nm, fetSB=n_sb, fetCD=n_cd, zMQ=n_mqb, zBQ=n_bqb, MQ0=n_MQ0, VAF=vaf)
+            normal_sample_string = '{GT}:{DP4}:{CD4}:{refMQ}:{altMQ}:{refBQ}:{altBQ}:{refNM}:{altNM}:{fetSB}:{fetCD}:{zMQ}:{zBQ}:{MQ0}:{VAF}:{MVJSD}:{NUM_TOOLS}:{SCORE}'.format(GT=gt, DP4=dp4_string, CD4=cd4_string, refMQ=n_ref_mq, altMQ=n_alt_mq, refBQ=n_ref_bq, altBQ=n_alt_bq, refNM=n_ref_nm, altNM=n_alt_nm, fetSB=n_sb, fetCD=n_cd, zMQ=n_mqb, zBQ=n_bqb, MQ0=n_MQ0, VAF=vaf, MVJSD='.', NUM_TOOLS='.', SCORE='.')
 
 
         ### TUMOR ###
