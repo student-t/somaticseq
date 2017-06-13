@@ -223,7 +223,9 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
             num_tools = num_tools + int(if_Tool)
             
         MVJS = ','.join(MVJS)
-            
+        
+        info_string = '.'
+        
         # NORMAL
         if not single_mode:
             n_ref_mq  = tsv_item[nBAM_REF_MQ]          if tsv_item[nBAM_REF_MQ]          != 'nan' else '.'
