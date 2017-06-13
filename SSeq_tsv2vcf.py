@@ -266,7 +266,7 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
                 vaf = 0
             vaf = '%.3g' % vaf
             
-            normal_sample_string = '{GT}:{DP4}:{CD4}:{refMQ}:{altMQ}:{refBQ}:{altBQ}:{refNM}:{altNM}:{fetSB}:{fetCD}:{zMQ}:{zBQ}:{MQ0}:{VAF}:{MVJSD}:{NUM_TOOLS}:{SCORE}'.format(GT=gt, DP4=dp4_string, CD4=cd4_string, refMQ=n_ref_mq, altMQ=n_alt_mq, refBQ=n_ref_bq, altBQ=n_alt_bq, refNM=n_ref_nm, altNM=n_alt_nm, fetSB=n_sb, fetCD=n_cd, zMQ=n_mqb, zBQ=n_bqb, MQ0=n_MQ0, VAF=vaf, MVJSD=MVJS, NUM_TOOLS=num_tools, SCORE='.')
+            normal_sample_string = '{GT}:{DP4}:{CD4}:{refMQ}:{altMQ}:{refBQ}:{altBQ}:{refNM}:{altNM}:{fetSB}:{fetCD}:{zMQ}:{zBQ}:{MQ0}:{VAF}'.format(GT=gt, DP4=dp4_string, CD4=cd4_string, refMQ=n_ref_mq, altMQ=n_alt_mq, refBQ=n_ref_bq, altBQ=n_alt_bq, refNM=n_ref_nm, altNM=n_alt_nm, fetSB=n_sb, fetCD=n_cd, zMQ=n_mqb, zBQ=n_bqb, MQ0=n_MQ0, VAF=vaf)
 
 
         ### TUMOR ###
