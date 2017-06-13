@@ -156,8 +156,6 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
     
     vcf.write('##INFO=<ID=SOMATIC,Number=0,Type=Flag,Description="Somatic mutation in primary">\n')
     
-    vcf.write('##FORMAT=<ID={COMBO},Number={NUM},Type=Integer,Description="Calling decision of the {NUM} algorithms: {TOOL_STRING}">\n'.format(COMBO=mvjsdu, NUM=total_num_tools, TOOL_STRING=tool_string) )
-    vcf.write('##FORMAT=<ID=NUM_TOOLS,Number=1,Type=Float,Description="Number of tools called it Somatic">\n')
     vcf.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
     vcf.write('##FORMAT=<ID=DP4,Number=4,Type=Integer,Description="ref forward, ref reverse, alt forward, alt reverse">\n')
     vcf.write('##FORMAT=<ID=CD4,Number=4,Type=Integer,Description="ref concordant, ref discordant, alt concordant, alt discordant">\n')
@@ -175,7 +173,10 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
     vcf.write('##FORMAT=<ID=zBQ,Number=1,Type=Float,Description="z-score rank sum of base quality">\n')
     vcf.write('##FORMAT=<ID=MQ0,Number=1,Type=Integer,Description="Number of reads with mapping quality of 0">\n')
     vcf.write('##FORMAT=<ID=VAF,Number=1,Type=Float,Description="Variant Allele Frequency">\n')
-
+    vcf.write('##FORMAT=<ID={COMBO},Number={NUM},Type=Integer,Description="Calling decision of the {NUM} algorithms: {TOOL_STRING}">\n'.format(COMBO=mvjsdu, NUM=total_num_tools, TOOL_STRING=tool_string) )
+    vcf.write('##FORMAT=<ID=NUM_TOOLS,Number=1,Type=Float,Description="Number of tools called it Somatic">\n')
+    vcf.write('##FORMAT=<ID=SCORE,Number=1,Type=Float,Description="SomaticSeq Probability (either fraction or Phred)">\n')
+    
     if single_mode:
         vcf.write('#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t{}\n'.format(args.tumor_sample_name) )
     elif paired_mode:
@@ -308,12 +309,12 @@ with open(tsv_fn) as tsv, open(vcf_fn, 'w') as vcf:
             
         vaf = '%.3g' % vaf        
 
-        tumor_sample_string = '{GT}:{DP4}:{CD4}:{refMQ}:{altMQ}:{refBQ}:{altBQ}:{refNM}:{altNM}:{fetSB}:{fetCD}:{zMQ}:{zBQ}:{MQ0}:{VAF}:{MVJSD}:{NUM_TOOLS}'.format(GT=gt, DP4=dp4_string, CD4=cd4_string, refMQ=t_ref_mq, altMQ=t_alt_mq, refBQ=t_ref_bq, altBQ=t_alt_bq, refNM=t_ref_nm, altNM=t_alt_nm, fetSB=t_sb, fetCD=t_cd, zMQ=t_mqb, zBQ=t_bqb, MQ0=t_MQ0, VAF=vaf, MVJSD=MVJS, NUM_TOOLS=num_tools)
-
-        field_string = 'GT:DP4:CD4:refMQ:altMQ:refBQ:altBQ:refNM:altNM:fetSB:fetCD:zMQ:zBQ:MQ0:VAF:{}:NUM_TOOLS'.format(mvjsdu)
-        
         if score is nan:
             scaled_score = 0
+        
+        field_string = 'GT:DP4:CD4:refMQ:altMQ:refBQ:altBQ:refNM:altNM:fetSB:fetCD:zMQ:zBQ:MQ0:VAF:{}:NUM_TOOLS:SCORE'.format(mvjsdu)
+
+        tumor_sample_string = '{GT}:{DP4}:{CD4}:{refMQ}:{altMQ}:{refBQ}:{altBQ}:{refNM}:{altNM}:{fetSB}:{fetCD}:{zMQ}:{zBQ}:{MQ0}:{VAF}:{MVJSD}:{NUM_TOOLS}'.format(GT=gt, DP4=dp4_string, CD4=cd4_string, refMQ=t_ref_mq, altMQ=t_alt_mq, refBQ=t_ref_bq, altBQ=t_alt_bq, refNM=t_ref_nm, altNM=t_alt_nm, fetSB=t_sb, fetCD=t_cd, zMQ=t_mqb, zBQ=t_bqb, MQ0=t_MQ0, VAF=vaf, MVJSD=MVJS, NUM_TOOLS=num_tools, SCORE=scaled_score)
         
         
         # PASS
