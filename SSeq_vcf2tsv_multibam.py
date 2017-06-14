@@ -31,8 +31,10 @@ input_sites.add_argument('-myvcf',  '--vcf-format',           type=str,   help='
 input_sites.add_argument('-mybed',  '--bed-format',           type=str,   help='Input file is BED formatted.', required=False, default=None)
 input_sites.add_argument('-mypos',  '--positions-list',       type=str,   help='A list of positions: tab seperating contig and positions.', required=False, default=None)
 
-parser.add_argument('-nbam', '--normal-bam-file',             type=str,   help='Normal BAM File',   required=True, default=None)
-parser.add_argument('-tbam', '--tumor-bam-file',              type=str,   help='Tumor BAM File',    required=True, default=None)
+parser.add_argument('-nprefix', '--tumor-prefixes',   narg='*', type=str,   help='normal prefixes',  required=True, default=None)
+parser.add_argument('-tprefix', '--normal-prefixes',  narg='*', type=str,   help='tumor prefixes',   required=True, default=None)
+parser.add_argument('-nbams', '--normal-bam-files',   narg='*', type=str,   help='Normal BAM Files', required=True, default=None)
+parser.add_argument('-tbams', '--tumor-bam-files',    narg='*', type=str,   help='Tumor BAM Files',  required=True, default=None)
 
 parser.add_argument('-truth',     '--ground-truth-vcf',       type=str,   help='VCF of true hits',  required=False, default=None)
 parser.add_argument('-dbsnp',     '--dbsnp-vcf',              type=str,   help='dbSNP VCF: do not use if input VCF is annotated', required=False, default=None)
