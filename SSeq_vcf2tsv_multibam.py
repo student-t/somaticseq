@@ -1,21 +1,5 @@
 #!/usr/bin/env python3
 
-# 1-based index in this program.
-# Sample command:
-# python3 SSeq_merged.vcf2tsv.py -myvcf BINA.snp.vcf -sniper somaticsniper/variants.vcf -varscan varscan2/variants.snp.vcf -jsm jointsnvmix2/variants.vcf -vardict vardict/variants.snp.vcf.gz -muse muse/variants.vcf -nbam normal.indelrealigned.bam -tbam tumor.indelrealigned.bam -ref human_g1k_v37_decoy.fasta -outfile SSeq2.snp.tsv
-
-### Improvement since the 2015 Genome Biology publication:
-  # Supports MuSE, LoFreq, Scalpel
-  # Allow +/- INDEL lengh for insertion and deletion
-  # Uses pysam to extract information directly from BAM files, e.g., flanking indel, edit distance, discordance, etc.
-  # Implement optional minimal mapping quality (MQ) and base call quality (BQ) filter, for which pysam considers the reads in BAM files. 
-  # Allow user to count only non-duplicate reads if -dedup option is invoked. 
-  # Allow handling of VCF files with multiple lines (i.e., different variants) at the same chromosome coordinates, as well as ALT columns with multiple ALT calls.
-  # Deprecated HaplotypeCaller and SAMTools dependencies
-  # Get useful metrics from MuTect2
-
-# -- 6/1/2016
-
 import sys, argparse, math, gzip, os, pysam
 import regex as re
 import scipy.stats as stats
@@ -33,22 +17,12 @@ input_sites.add_argument('-mypos',  '--positions-list',       type=str,   help='
 
 parser.add_argument('-nprefix', '--tumor-prefixes',   narg='*', type=str,   help='normal prefixes',  required=True, default=None)
 parser.add_argument('-tprefix', '--normal-prefixes',  narg='*', type=str,   help='tumor prefixes',   required=True, default=None)
-parser.add_argument('-nbams', '--normal-bam-files',   narg='*', type=str,   help='Normal BAM Files', required=True, default=None)
-parser.add_argument('-tbams', '--tumor-bam-files',    narg='*', type=str,   help='Tumor BAM Files',  required=True, default=None)
+parser.add_argument('-nbams',   '--normal-bam-files', narg='*', type=str,   help='Normal BAM Files', required=True, default=None)
+parser.add_argument('-tbams',   '--tumor-bam-files',  narg='*', type=str,   help='Tumor BAM Files',  required=True, default=None)
 
 parser.add_argument('-truth',     '--ground-truth-vcf',       type=str,   help='VCF of true hits',  required=False, default=None)
 parser.add_argument('-dbsnp',     '--dbsnp-vcf',              type=str,   help='dbSNP VCF: do not use if input VCF is annotated', required=False, default=None)
 parser.add_argument('-cosmic',    '--cosmic-vcf',             type=str,   help='COSMIC VCF: do not use if input VCF is annotated',   required=False, default=None)
-
-parser.add_argument('-mutect',  '--mutect-vcf',               type=str,   help='MuTect VCF',        required=False, default=None)
-parser.add_argument('-strelka', '--strelka-vcf',              type=str,   help='Strelka VCF',       required=False, default=None)
-parser.add_argument('-sniper',  '--somaticsniper-vcf',        type=str,   help='SomaticSniper VCF', required=False, default=None)
-parser.add_argument('-varscan', '--varscan-vcf',              type=str,   help='VarScan2 VCF',      required=False, default=None)
-parser.add_argument('-jsm',     '--jsm-vcf',                  type=str,   help='JointSNVMix2 VCF',  required=False, default=None)
-parser.add_argument('-vardict', '--vardict-vcf',              type=str,   help='VarDict VCF',       required=False, default=None)
-parser.add_argument('-muse',    '--muse-vcf',                 type=str,   help='MuSE VCF',          required=False, default=None)
-parser.add_argument('-lofreq',  '--lofreq-vcf',               type=str,   help='LoFreq VCF',        required=False, default=None)
-parser.add_argument('-scalpel', '--scalpel-vcf',              type=str,   help='Scalpel VCF',       required=False, default=None)
 
 parser.add_argument('-ref',     '--genome-reference',         type=str,   help='.fasta.fai file to get the contigs', required=True, default=None)
 parser.add_argument('-dedup',   '--deduplicate',     action='store_true', help='Do not consider duplicate reads from BAM files. Default is to count everything', required=False, default=False)
@@ -58,7 +32,6 @@ parser.add_argument('-minBQ',     '--minimum-base-quality',   type=float, help='
 parser.add_argument('-mincaller', '--minimum-num-callers',    type=float, help='Minimum number of tools to be considered', required=False, default=0)
 
 parser.add_argument('-scale',      '--p-scale',               type=str,   help='phred, fraction, or none', required=False, default=None)
-
 parser.add_argument('-outfile',    '--output-tsv-file',       type=str,   help='Output TSV Name', required=False, default=os.sys.stdout)
 
 args = parser.parse_args()
@@ -69,25 +42,17 @@ is_vcf    = args.vcf_format
 is_bed    = args.bed_format
 is_pos    = args.positions_list
 
-nbam_fn   = args.normal_bam_file
-tbam_fn   = args.tumor_bam_file
+nbam_fn   = args.normal_bam_files
+tbam_fn   = args.tumor_bam_files
+n_prefix  = args.normal_prefixes
+t_prefix  = args.tumor_prefixes
 
 truth     = args.ground_truth_vcf
 cosmic    = args.cosmic_vcf
 dbsnp     = args.dbsnp_vcf
-mutect    = args.mutect_vcf
-strelka   = args.strelka_vcf
-sniper    = args.somaticsniper_vcf
-varscan   = args.varscan_vcf
-jsm       = args.jsm_vcf
-vardict   = args.vardict_vcf
-muse      = args.muse_vcf
-lofreq    = args.lofreq_vcf
-scalpel   = args.scalpel_vcf
 
 min_mq    = args.minimum_mapping_quality
 min_bq    = args.minimum_base_quality
-
 ref_fa    = args.genome_reference
 p_scale   = args.p_scale
 
@@ -96,6 +61,11 @@ outfile   = args.output_tsv_file
 # Convert contig_sequence to chrom_seq dict:
 fai_file  = ref_fa + '.fai'
 chrom_seq = genome.faiordict2contigorder(fai_file, 'fai')
+
+assert len(nbam_fn) == len(tbam_fn) == len(n_prefix) == len(t_prefix)
+
+paired_prefixes = tuple( zip(n_prefix, t_prefix) )
+paired_bams = tuple( zip(nbam_fn, tbam_fn) )
 
 # Determine input format:
 if is_vcf:
@@ -136,122 +106,57 @@ nan = float('nan')
 inf = float('inf')
 pattern_chr_position = genome.pattern_chr_position
 
-# Normal/Tumor index in the Merged VCF file, or any other VCF file that puts NORMAL first. 
-idxN,idxT = 0,1
-
-# Normal/Tumor index in VarDict VCF, or any other VCF file that puts TUMOR first.
-vdT,vdN = 0,1
-
 
 # Header for the output data, created here so I won't have to indent this line:
 out_header = \
-'{CHROM}\t\
-{POS}\t\
-{ID}\t\
-{REF}\t\
-{ALT}\t\
-{if_MuTect}\t\
-{if_Strelka}\t\
-{if_VarScan2}\t\
-{if_JointSNVMix2}\t\
-{if_SomaticSniper}\t\
-{if_VarDict}\t\
-{if_LoFreq}\t\
-{if_Scalpel}\t\
-{MuSE_Tier}\t\
-{Strelka_Score}\t\
-{Strelka_QSS}\t\
-{Strelka_TQSS}\t\
-{VarScan2_Score}\t\
-{SNVMix2_Score}\t\
-{Sniper_Score}\t\
-{VarDict_Score}\t\
-{if_dbsnp}\t\
-{COMMON}\t\
-{if_COSMIC}\t\
-{COSMIC_CNT}\t\
-{N_DP}\t\
-{nBAM_REF_MQ}\t\
-{nBAM_ALT_MQ}\t\
-{nBAM_Z_Ranksums_MQ}\t\
-{nBAM_REF_BQ}\t\
-{nBAM_ALT_BQ}\t\
-{nBAM_Z_Ranksums_BQ}\t\
-{nBAM_REF_NM}\t\
-{nBAM_ALT_NM}\t\
-{nBAM_NM_Diff}\t\
-{nBAM_REF_Concordant}\t\
-{nBAM_REF_Discordant}\t\
-{nBAM_ALT_Concordant}\t\
-{nBAM_ALT_Discordant}\t\
-{nBAM_Concordance_FET}\t\
-{N_REF_FOR}\t\
-{N_REF_REV}\t\
-{N_ALT_FOR}\t\
-{N_ALT_REV}\t\
-{nBAM_StrandBias_FET}\t\
-{nBAM_Z_Ranksums_EndPos}\t\
-{nBAM_REF_Clipped_Reads}\t\
-{nBAM_ALT_Clipped_Reads}\t\
-{nBAM_Clipping_FET}\t\
-{nBAM_MQ0}\t\
-{nBAM_Other_Reads}\t\
-{nBAM_Poor_Reads}\t\
-{nBAM_REF_InDel_3bp}\t\
-{nBAM_REF_InDel_2bp}\t\
-{nBAM_REF_InDel_1bp}\t\
-{nBAM_ALT_InDel_3bp}\t\
-{nBAM_ALT_InDel_2bp}\t\
-{nBAM_ALT_InDel_1bp}\t\
-{M2_RPA}\t\
-{M2_NLOD}\t\
-{M2_TLOD}\t\
-{M2_STR}\t\
-{M2_ECNT}\t\
-{M2_HCNT}\t\
-{M2_MAXED}\t\
-{M2_MINED}\t\
-{SOR}\t\
-{MSI}\t\
-{MSILEN}\t\
-{SHIFT3}\t\
-{MaxHomopolymer_Length}\t\
-{SiteHomopolymer_Length}\t\
-{T_DP}\t\
-{tBAM_REF_MQ}\t\
-{tBAM_ALT_MQ}\t\
-{tBAM_Z_Ranksums_MQ}\t\
-{tBAM_REF_BQ}\t\
-{tBAM_ALT_BQ}\t\
-{tBAM_Z_Ranksums_BQ}\t\
-{tBAM_REF_NM}\t\
-{tBAM_ALT_NM}\t\
-{tBAM_NM_Diff}\t\
-{tBAM_REF_Concordant}\t\
-{tBAM_REF_Discordant}\t\
-{tBAM_ALT_Concordant}\t\
-{tBAM_ALT_Discordant}\t\
-{tBAM_Concordance_FET}\t\
-{T_REF_FOR}\t\
-{T_REF_REV}\t\
-{T_ALT_FOR}\t\
-{T_ALT_REV}\t\
-{tBAM_StrandBias_FET}\t\
-{tBAM_Z_Ranksums_EndPos}\t\
-{tBAM_REF_Clipped_Reads}\t\
-{tBAM_ALT_Clipped_Reads}\t\
-{tBAM_Clipping_FET}\t\
-{tBAM_MQ0}\t\
-{tBAM_Other_Reads}\t\
-{tBAM_Poor_Reads}\t\
-{tBAM_REF_InDel_3bp}\t\
-{tBAM_REF_InDel_2bp}\t\
-{tBAM_REF_InDel_1bp}\t\
-{tBAM_ALT_InDel_3bp}\t\
-{tBAM_ALT_InDel_2bp}\t\
-{tBAM_ALT_InDel_1bp}\t\
-{InDel_Length}\t\
-{TrueVariant_or_False}'
+'CHROM\t\
+POS\t\
+ID\t\
+REF\t\
+ALT\t\
+if_dbsnp\t\
+COMMON\t\
+if_COSMIC\t\
+COSMIC_CNT\t\
+MaxHomopolymer_Length\t\
+SiteHomopolymer_Length\t\
+InDel_Length\t\
+TrueVariant_or_False'
+
+bam_headers = '{prefix}_DP\t\
+{prefix}_REF_MQ\t\
+{prefix}_ALT_MQ\t\
+{prefix}_Z_Ranksums_MQ\t\
+{prefix}_REF_BQ\t\
+{prefix}_ALT_BQ\t\
+{prefix}_Z_Ranksums_BQ\t\
+{prefix}_REF_NM\t\
+{prefix}_ALT_NM\t\
+{prefix}_NM_Diff\t\
+{prefix}_REF_Concordant\t\
+{prefix}_REF_Discordant\t\
+{prefix}_ALT_Concordant\t\
+{prefix}_ALT_Discordant\t\
+{prefix}_Concordance_FET\t\
+{prefix}_REF_FOR\t\
+{prefix}_REF_REV\t\
+{prefix}_ALT_FOR\t\
+{prefix}_ALT_REV\t\
+{prefix}_StrandBias_FET\t\
+{prefix}_Z_Ranksums_EndPos\t\
+{prefix}_REF_Clipped_Reads\t\
+{prefix}_ALT_Clipped_Reads\t\
+{prefix}_Clipping_FET\t\
+{prefix}_MQ0\t\
+{prefix}_Other_Reads\t\
+{prefix}_Poor_Reads\t\
+{prefix}_REF_InDel_3bp\t\
+{prefix}_REF_InDel_2bp\t\
+{prefix}_REF_InDel_1bp\t\
+{prefix}_ALT_InDel_3bp\t\
+{prefix}_ALT_InDel_2bp\t\
+{prefix}_ALT_InDel_1bp'
+
 
 ## Running
 with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
@@ -280,69 +185,25 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
         while dbsnp_line.startswith('#'):
             dbsnp_line = dbsnp.readline().rstrip()
     
-    if mutect:
-        mutect = genome.open_textfile(mutect)
-        mutect_line = mutect.readline().rstrip()
-        while mutect_line.startswith('#'):
-            mutect_line = mutect.readline().rstrip()
-
-    if strelka:
-        strelka = genome.open_textfile(strelka)
-        strelka_line = strelka.readline().rstrip()
-        while strelka_line.startswith('#'):
-            strelka_line = strelka.readline().rstrip()
-    
-    if sniper:
-        sniper = genome.open_textfile(sniper)
-        sniper_line = sniper.readline().rstrip()
-        while sniper_line.startswith('#'):
-            sniper_line = sniper.readline().rstrip()
-    
-    if varscan:
-        varscan = genome.open_textfile(varscan)
-        varscan_line = varscan.readline().rstrip()
-        while varscan_line.startswith('#'):
-            varscan_line = varscan.readline().rstrip()
-    
-    if jsm:
-        jsm = genome.open_textfile(jsm)
-        jsm_line = jsm.readline().rstrip()
-        while jsm_line.startswith('#'):
-            jsm_line = jsm.readline().rstrip()
-    
-    if vardict:
-        vardict = genome.open_textfile(vardict)
-        vardict_line = vardict.readline().rstrip()
-        while vardict_line.startswith('#'):
-            vardict_line = vardict.readline().rstrip()
-    
-    if muse:
-        muse = genome.open_textfile(muse)
-        muse_line = muse.readline().rstrip()
-        while muse_line.startswith('#'):
-            muse_line = muse.readline().rstrip()
-    
-    if lofreq:
-        lofreq = genome.open_textfile(lofreq)
-        lofreq_line = lofreq.readline().rstrip()
-        while lofreq_line.startswith('#'):
-            lofreq_line = lofreq.readline().rstrip()
-            
-    if scalpel:
-        scalpel = genome.open_textfile(scalpel)
-        scalpel_line = scalpel.readline().rstrip()
-        while scalpel_line.startswith('#'):
-            scalpel_line = scalpel.readline().rstrip()
-
-    
     
     # Get through all the headers:
     while my_line.startswith('#') or my_line.startswith('track='):
         my_line = my_sites.readline().rstrip()
+        
+    for nbam_i, tbam_i in paired_prefixes:
+        out_header = out_header + '\t' + bam_headers.format(prefix=nbam_i) + '\t' + bam_headers.format(prefix=tbam_i) + '\t' + '{}_SOR'.format( '{}_{}'.format(nbam_i, tbam_i))
     
-    # First line:
-    outhandle.write( out_header.replace('{','').replace('}','')  + '\n' )
+    # Write out the header
+    outhandle.write( out_header  + '\n' )
     
+    # Make things '{Feature_1}\t{Feature_2}\t....{Feature_N}'
+    features = out_header.split('\t')
+    out_string = ''
+    for feature_i in features:
+        out_string = out_string + '\t{' + feature_i + '}'
+    out_string = out_string.lstrip('\t')
+
+
     while my_line:
         
         # If VCF, get all the variants with the same coordinate into a list:
@@ -435,18 +296,9 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
             num_callers = 0
             
             #################################### Find the same coordinate in those VCF files ####################################
-            if args.mutect_vcf:        got_mutect,  mutect_variants,  mutect_line  = genome.find_vcf_at_coordinate(my_coordinate, mutect_line,  mutect,  chrom_seq)
-            if args.strelka_vcf:       got_strelka, strelka_variants, strelka_line = genome.find_vcf_at_coordinate(my_coordinate, strelka_line, strelka, chrom_seq)
-            if args.varscan_vcf:       got_varscan, varscan_variants, varscan_line = genome.find_vcf_at_coordinate(my_coordinate, varscan_line, varscan, chrom_seq)
-            if args.jsm_vcf:           got_jsm,     jsm_variants,     jsm_line     = genome.find_vcf_at_coordinate(my_coordinate, jsm_line,     jsm,     chrom_seq)
-            if args.somaticsniper_vcf: got_sniper,  sniper_variants,  sniper_line  = genome.find_vcf_at_coordinate(my_coordinate, sniper_line,  sniper,  chrom_seq)
-            if args.vardict_vcf:       got_vardict, vardict_variants, vardict_line = genome.find_vcf_at_coordinate(my_coordinate, vardict_line, vardict, chrom_seq)
-            if args.muse_vcf:          got_muse,    muse_variants,    muse_line    = genome.find_vcf_at_coordinate(my_coordinate, muse_line,    muse,    chrom_seq)
-            if args.lofreq_vcf:        got_lofreq,  lofreq_variants,  lofreq_line  = genome.find_vcf_at_coordinate(my_coordinate, lofreq_line,  lofreq,  chrom_seq)
-            if args.scalpel_vcf:       got_scalpel, scalpel_variants, scalpel_line = genome.find_vcf_at_coordinate(my_coordinate, scalpel_line, scalpel, chrom_seq)
-            if args.ground_truth_vcf:  got_truth,   truth_variants,   truth_line   = genome.find_vcf_at_coordinate(my_coordinate, truth_line,   truth,   chrom_seq)
-            if args.dbsnp_vcf:         got_dbsnp,   dbsnp_variants,   dbsnp_line   = genome.find_vcf_at_coordinate(my_coordinate, dbsnp_line,   dbsnp,   chrom_seq)
-            if args.cosmic_vcf:        got_cosmic,  cosmic_variants,  cosmic_line  = genome.find_vcf_at_coordinate(my_coordinate, cosmic_line,  cosmic,  chrom_seq)
+            if args.ground_truth_vcf: got_truth,   truth_variants,   truth_line   = genome.find_vcf_at_coordinate(my_coordinate, truth_line,   truth,   chrom_seq)
+            if args.dbsnp_vcf:        got_dbsnp,   dbsnp_variants,   dbsnp_line   = genome.find_vcf_at_coordinate(my_coordinate, dbsnp_line,   dbsnp,   chrom_seq)
+            if args.cosmic_vcf:       got_cosmic,  cosmic_variants,  cosmic_line  = genome.find_vcf_at_coordinate(my_coordinate, cosmic_line,  cosmic,  chrom_seq)
             
             
             # Now, use pysam to look into the BAM file(s), variant by variant from the input:
@@ -465,818 +317,387 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     variant_id = ( (my_coordinate[0], my_coordinate[1]), ref_base, first_alt )
 
 
-                #################### Collect MuTect ####################:
-                if args.mutect_vcf:
+                ########## Ground truth file ##########
+                if args.ground_truth_vcf:
+                    if variant_id in truth_variants.keys():
+                        judgement = 1
+                        my_identifiers.add('TruePositive')
+                    else:
+                        judgement = 0
+                        my_identifiers.add('FalsePositive')
+                else:
+                    judgement = nan
 
-                    if variant_id in mutect_variants:
 
-                        mutect_variant_i = mutect_variants[variant_id]
-                        mutect_classification = 1 if (mutect_variant_i.get_info_value('SOMATIC') or 'PASS' in mutect_variant_i.filters) else 0
-                        
-                        # MuTect2 has some useful information:
-                        rpa    = mutect2_RPA(mutect_variant_i)
-                        nlod   = mutect2_nlod(mutect_variant_i)
-                        tlod   = mutect2_tlod(mutect_variant_i)
-                        tandem = mutect2_STR(mutect_variant_i)
-                        ecnt   = mutect2_ECNT(mutect_variant_i)
-                        hcnt   = mutect2_HCNT(mutect_variant_i)
-                        maxED  = mutect2_maxED(mutect_variant_i)
-                        minED  = mutect2_minED(mutect_variant_i)
-                        rpa    = sum(rpa)/len(rpa)
-                        
-                        # If ref_base, first_alt, and indel_length unknown, get it here:
-                        if not ref_base:         ref_base = mutect_variant_i.refbase
-                        if not first_alt:        first_alt = mutect_variant_i.altbase
-                        if indel_length == None: indel_length = len(first_alt) - len(ref_base)
+                ########## dbSNP ########## Will overwrite dbSNP info from input VCF file
+                if args.dbsnp_vcf:
+                    if variant_id in dbsnp_variants.keys():
+
+                        dbsnp_variant_i = dbsnp_variants[variant_id]
+                        if_dbsnp = 1
+                        if_common = 1 if dbsnp_variant_i.get_info_value('COMMON') == '1' else 0
+
+                        rsID = dbsnp_variant_i.identifier.split(',')
+                        for ID_i in rsID:
+                            my_identifiers.add( ID_i )
 
                     else:
-                        # Not called by mutect
-                        mutect_classification = 0
-                        rpa = nlod = tlod = tandem = ecnt = hcnt = maxED = minED = nan
-
-                    num_callers += mutect_classification
-                else:
-                    # Assign a bunch of NaN's
-                    mutect_classification = nan
-                    rpa = nlod = tlod = tandem = ecnt = hcnt = maxED = minED = nan
-
-
-                #################### Collect Strelka ####################:
-                if args.strelka_vcf:
-                    
-                    if variant_id in strelka_variants:
-                        
-                        strelka_variant_i = strelka_variants[variant_id]
-                        strelka_classification = 1 if 'PASS' in strelka_variant_i.filters else 0
-                        somatic_evs = strelka_variant_i.get_info_value('SomaticEVS')
-                        qss = strelka_variant_i.get_info_value('QSS')
-                        tqss = strelka_variant_i.get_info_value('TQSS')
-                        
-                    else:
-                        strelka_classification = 0
-                        somatic_evs = qss = tqss = nan
-                        
-                else:
-                    strelka_classification = nan
-                    somatic_evs = qss = tqss = nan
-                        
-                
-                
-                #################### Collect VarScan ####################:
-                if args.varscan_vcf:
-
-                    if variant_id in varscan_variants:
-
-                        varscan_variant_i = varscan_variants[ variant_id ]
-                        varscan_classification = 1 if varscan_variant_i.get_info_value('SOMATIC') else 0
-                        score_varscan2 = int(varscan_variant_i.get_info_value('SSC'))
-
-                        # If ref_base, first_alt, and indel_length unknown, get it here:
-                        if not ref_base:         ref_base = varscan_variant_i.refbase
-                        if not first_alt:        first_alt = varscan_variant_i.altbase
-                        if indel_length == None: indel_length = len(first_alt) - len(ref_base)
-                        
-                    else:
-                        varscan_classification = 0
-                        score_varscan2 = nan
-
-                    num_callers += varscan_classification
-                else:
-                    varscan_classification = score_varscan2 = nan
-
-
-                #################### Collect JointSNVMix ####################:
-                if args.jsm_vcf:
-                    
-                    if variant_id in jsm_variants:
-                        
-                        jsm_variant_i = jsm_variants[ variant_id ]
-                        jointsnvmix2_classification = 1
-                        aaab = float( jsm_variant_i.get_info_value('AAAB') )
-                        aabb = float( jsm_variant_i.get_info_value('AABB') )
-                        jointsnvmix2_p = 1 - aaab - aabb
-                        score_jointsnvmix2 = genome.p2phred(jointsnvmix2_p, max_phred=50)
-
-                        # If ref_base, first_alt, and indel_length unknown, get it here:
-                        if not ref_base:         ref_base = jsm_variant_i.refbase
-                        if not first_alt:        first_alt = jsm_variant_i.altbase
-                        if indel_length == None: indel_length = len(first_alt) - len(ref_base)
-                        
-                    else:
-                        jointsnvmix2_classification = 0
-                        score_jointsnvmix2 = nan
-                        
-                    num_callers += jointsnvmix2_classification
-                else:
-                    jointsnvmix2_classification = score_jointsnvmix2 = nan
+                        if_dbsnp = if_common = 0
 
                 
-                #################### Collect SomaticSniper ####################:
-                if args.somaticsniper_vcf:
-                    
-                    if variant_id in sniper_variants:
+                ########## COSMIC ########## Will overwrite COSMIC info from input VCF file
+                if args.cosmic_vcf:
+                    if variant_id in cosmic_variants.keys():
+
+                        cosmic_variant_i = cosmic_variants[variant_id]
                         
-                        sniper_variant_i = sniper_variants[ variant_id ]
-                        sniper_classification = 1 if sniper_variant_i.get_sample_value('SS', idxT) == '2' else 0
-                        if sniper_classification == 1:
-                            score_somaticsniper = sniper_variant_i.get_sample_value('SSC', idxT)
-                            score_somaticsniper = int(score_somaticsniper) if score_somaticsniper else nan
+                        # If designated as SNP, make it "non-cosmic" and make CNT=nan.
+                        if cosmic_variant_i.get_info_value('SNP'):
+                            if_cosmic = 0
+                            num_cases = nan
+                        
                         else:
-                            score_somaticsniper = nan
+                            if_cosmic = 1
+                            num_cases = cosmic_variant_i.get_info_value('CNT')
+                            num_cases = num_cases if num_cases else nan
 
-                        # If ref_base, first_alt, and indel_length unknown, get it here:
-                        if not ref_base:         ref_base = sniper_variant_i.refbase
-                        if not first_alt:        first_alt = sniper_variant_i.altbase
-                        if indel_length == None: indel_length = len(first_alt) - len(ref_base)
+                        # COSMIC ID still intact:
+                        cosmicID = cosmic_variant_i.identifier.split(',')
+                        for ID_i in cosmicID:
+                            my_identifiers.add( ID_i )
                             
                     else:
-                        sniper_classification = 0
-                        score_somaticsniper = nan
-                        
-                    num_callers += sniper_classification
-                else:
-                    sniper_classification = score_somaticsniper = nan
+                        if_cosmic = num_cases = 0
                 
                 
-                #################### Collect VarDict ####################:
-                if args.vardict_vcf:
-                    
-                    if variant_id in vardict_variants:
+                ########################################################################################
+                # Tumor BAM file:
+                t_reads = tbam.fetch( my_coordinate[0], my_coordinate[1]-1, my_coordinate[1] )
+                
+                t_ref_read_mq = []
+                t_alt_read_mq = []
+                t_ref_read_bq = []
+                t_alt_read_bq = []
+                t_ref_edit_distance = []
+                t_alt_edit_distance = []
+                
+                t_ref_concordant_reads = t_alt_concordant_reads = t_ref_discordant_reads = t_alt_discordant_reads = 0
+                t_ref_for = t_ref_rev = t_alt_for = t_alt_rev = T_dp = 0
+                t_ref_SC_reads = t_alt_SC_reads = t_ref_notSC_reads = t_alt_notSC_reads = 0
+                t_MQ0 = 0
+                
+                t_ref_pos_from_end = []
+                t_alt_pos_from_end = []
+                t_ref_flanking_indel = []
+                t_alt_flanking_indel = []
+                
+                t_noise_read_count = t_poor_read_count  = 0
+                
+                for read_i in t_reads:
+                    if not read_i.is_unmapped and dedup_test(read_i):
                         
-                        vardict_variant_i = vardict_variants[ variant_id ]
+                        T_dp += 1
                         
-                        if (vardict_variant_i.filters == 'PASS') and ('Somatic' in vardict_variant_i.info):
-                            vardict_classification = 1
+                        code_i, ith_base, base_call_i, indel_length_i, flanking_indel_i = position_of_aligned_read(read_i, my_coordinate[1]-1 )
                         
-                        elif 'Somatic' in vardict_variant_i.info:
-                            vardict_filters = vardict_variant_i.filters.split(';')
+                        if read_i.mapping_quality < min_mq and mean(read_i.query_qualities) < min_bq:
+                            t_poor_read_count += 1
+                        
+                        if read_i.mapping_quality == 0:
+                            t_MQ0 += 1
+                        
+                        # Reference calls:
+                        if code_i == 1 and base_call_i == ref_base[0]:
+                        
+                            t_ref_read_mq.append( read_i.mapping_quality )
+                            t_ref_read_bq.append( read_i.query_qualities[ith_base] )
                             
-                            disqualifying_filters = ('d7' in vardict_filters or 'd5' in vardict_filters) or \
-                            ('DIFF0.2' in vardict_filters) or \
-                            ('LongAT' in vardict_filters) or \
-                            ('MAF0.05' in vardict_filters) or \
-                            ('MSI6' in vardict_filters) or \
-                            ('NM4' in vardict_filters or 'NM4.25' in vardict_filters) or \
-                            ('pSTD' in vardict_filters) or \
-                            ('SN1.5' in vardict_filters) or \
-                            ( 'P0.05' in vardict_filters and float(vardict_variant_i.get_info_value('SSF') ) >= 0.15 ) or \
-                            ( ('v3' in vardict_filters or 'v4' in vardict_filters) and int(vardict_variant_i.get_sample_value('VD', 0))<3 )
-                        
-                            no_bad_filter = not disqualifying_filters
-                            filter_fail_times = len(vardict_filters)
-                        
-                            if no_bad_filter and filter_fail_times<=2:
-                                vardict_classification = 0.5
+                            try:
+                                t_ref_edit_distance.append( read_i.get_tag('NM') )
+                            except KeyError:
+                                pass
+                            
+                            # Concordance
+                            if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                t_ref_concordant_reads += 1
+                            elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                t_ref_discordant_reads += 1
+                            
+                            # Orientation
+                            if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                t_ref_for += 1
+                            elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                t_ref_rev += 1
+                            
+                            # Soft-clipped reads?
+                            if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
+                                t_ref_SC_reads += 1
                             else:
-                                vardict_classification = 0
+                                t_ref_notSC_reads += 1
+
+                            # Distance from the end of the read:
+                            if ith_base != None:
+                                t_ref_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
                                 
-                        else:
-                            vardict_classification = 0
+                            # Flanking indels:
+                            t_ref_flanking_indel.append( flanking_indel_i )
+
+                        
+                        # Alternate calls:
+                        # SNV, or Deletion, or Insertion where I do not check for matching indel length
+                        elif (indel_length == 0 and code_i == 1 and base_call_i == first_alt) or \
+                             (indel_length < 0  and code_i == 2 and indel_length == indel_length_i) or \
+                             (indel_length > 0  and code_i == 3):
                             
-                        # Somatic Score:
-                        score_vardict = vardict_variant_i.get_info_value('SSF')
-                        if score_vardict:
-                            score_vardict = float(score_vardict)
-                            score_vardict = genome.p2phred(score_vardict, max_phred=100)
-                        else:
-                            score_vardict = nan
-    
-                        # MSI, MSILEN, and SHIFT3:
-                        msi    = find_MSI(vardict_variant_i)
-                        msilen = find_MSILEN(vardict_variant_i)
-                        shift3 = find_SHIFT3(vardict_variant_i)                        
-
-                        # If ref_base, first_alt, and indel_length unknown, get it here:
-                        if not ref_base:         ref_base = vardict_variant_i.refbase
-                        if not first_alt:        first_alt = vardict_variant_i.altbase
-                        if indel_length == None: indel_length = len(first_alt) - len(ref_base)
-                        
-                    else:
-                        vardict_classification = 0
-                        msi = msilen = shift3 = score_vardict = nan
-                    
-                    num_callers += vardict_classification
-                    
-                else:
-                    vardict_classification = msi = msilen = shift3 = score_vardict = nan
-
-
-                #################### Collect MuSE ####################:
-                if args.muse_vcf:
-                    
-                    if variant_id in muse_variants:
-                        
-                        muse_variant_i = muse_variants[ variant_id ]
-                        
-                        if muse_variant_i.filters   == 'PASS':
-                            muse_classification = 1
-                        elif muse_variant_i.filters == 'Tier1':
-                            muse_classification = 0.9                        
-                        elif muse_variant_i.filters == 'Tier2':
-                            muse_classification = 0.8
-                        elif muse_variant_i.filters == 'Tier3':
-                            muse_classification = 0.7
-                        elif muse_variant_i.filters == 'Tier4':
-                            muse_classification = 0.6
-                        elif muse_variant_i.filters == 'Tier5':
-                            muse_classification = 0.5
-                        else:
-                            muse_classification = 0
-
-                        # If ref_base, first_alt, and indel_length unknown, get it here:
-                        if not ref_base:         ref_base = muse_variant_i.refbase
-                        if not first_alt:        first_alt = muse_variant_i.altbase
-                        if indel_length == None: indel_length = len(first_alt) - len(ref_base)
+                            t_alt_read_mq.append( read_i.mapping_quality )
+                            t_alt_read_bq.append( read_i.query_qualities[ith_base] )
                             
-                    else:
-                        muse_classification = 0
-                    
-                    num_callers += muse_classification
+                            try:
+                                t_alt_edit_distance.append( read_i.get_tag('NM') )
+                            except KeyError:
+                                pass
+                            
+                            # Concordance
+                            if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                t_alt_concordant_reads += 1
+                            elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                t_alt_discordant_reads += 1
+                            
+                            # Orientation
+                            if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                t_alt_for += 1
+                            elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                t_alt_rev += 1
+                            
+                            # Soft-clipped reads?
+                            if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
+                                t_alt_SC_reads += 1
+                            else:
+                                t_alt_notSC_reads += 1
+
+                            # Distance from the end of the read:
+                            if ith_base != None:
+                                t_alt_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
+                                                    
+                            # Flanking indels:
+                            t_alt_flanking_indel.append( flanking_indel_i )
+                        
+                        
+                        # Inconsistent read or 2nd alternate calls:
+                        else:
+                            t_noise_read_count += 1
+                                
                 
-                else:
-                    muse_classification = nan
-            
-            
-                #################### Collect LoFreq ####################:
-                if args.lofreq_vcf:
-                    
-                    if variant_id in lofreq_variants:
-                        
-                        lofreq_variant_i = lofreq_variants[ variant_id ]
-                        lofreq_classification = 1 if lofreq_variant_i.filters == 'PASS' else 0
-
-                        # If ref_base, first_alt, and indel_length unknown, get it here:
-                        if not ref_base:         ref_base = lofreq_variant_i.refbase
-                        if not first_alt:        first_alt = lofreq_variant_i.altbase
-                        if indel_length == None: indel_length = len(first_alt) - len(ref_base)
-                        
-                    else:
-                        lofreq_classification = 0
-                        
-                    num_callers += lofreq_classification
-                    
-                else:
-                    lofreq_classification = nan
-                    
-
-                #################### Collect Scalpel ####################:
-                if args.scalpel_vcf:
-                    
-                    if variant_id in scalpel_variants:
-                        
-                        scalpel_variant_i = scalpel_variants[ variant_id ]
-                        
-                        if scalpel_variant_i.get_info_value('SOMATIC'):
-                            if scalpel_variant_i.filters == 'PASS':
-                                scalpel_classification = 1
-                            else:
-                                scalpel_classification = 0.5
-                        else:
-                            scalpel_classification = 0
-
-                        # If ref_base, first_alt, and indel_length unknown, get it here:
-                        if not ref_base:         ref_base = scalpel_variant_i.refbase
-                        if not first_alt:        first_alt = scalpel_variant_i.altbase
-                        if indel_length == None: indel_length = len(first_alt) - len(ref_base)
-
-                    else:
-                        scalpel_classification = 0
-                    
-                    num_callers += scalpel_classification
-                else:
-                    scalpel_classification = nan
+                # Done extracting info from tumor BAM. Now tally them:
+                t_ref_mq        = mean(t_ref_read_mq)
+                t_alt_mq        = mean(t_alt_read_mq)
+                t_z_ranksums_mq = stats.ranksums(t_alt_read_mq, t_ref_read_mq)[0]
                 
-                            
-                # Potentially write the output only if it meets this threshold:
-                if num_callers >= args.minimum_num_callers:
-                                        
-                    ########## Ground truth file ##########
-                    if args.ground_truth_vcf:
-                        if variant_id in truth_variants.keys():
-                            judgement = 1
-                            my_identifiers.add('TruePositive')
-                        else:
-                            judgement = 0
-                            my_identifiers.add('FalsePositive')
-                    else:
-                        judgement = nan
-
-
-                    ########## dbSNP ########## Will overwrite dbSNP info from input VCF file
-                    if args.dbsnp_vcf:
-                        if variant_id in dbsnp_variants.keys():
-
-                            dbsnp_variant_i = dbsnp_variants[variant_id]
-                            if_dbsnp = 1
-                            if_common = 1 if dbsnp_variant_i.get_info_value('COMMON') == '1' else 0
-
-                            rsID = dbsnp_variant_i.identifier.split(',')
-                            for ID_i in rsID:
-                                my_identifiers.add( ID_i )
-
-                        else:
-                            if_dbsnp = if_common = 0
-
-                    
-                    ########## COSMIC ########## Will overwrite COSMIC info from input VCF file
-                    if args.cosmic_vcf:
-                        if variant_id in cosmic_variants.keys():
-
-                            cosmic_variant_i = cosmic_variants[variant_id]
-                            
-                            # If designated as SNP, make it "non-cosmic" and make CNT=nan.
-                            if cosmic_variant_i.get_info_value('SNP'):
-                                if_cosmic = 0
-                                num_cases = nan
-                            
-                            else:
-                                if_cosmic = 1
-                                num_cases = cosmic_variant_i.get_info_value('CNT')
-                                num_cases = num_cases if num_cases else nan
-
-                            # COSMIC ID still intact:
-                            cosmicID = cosmic_variant_i.identifier.split(',')
-                            for ID_i in cosmicID:
-                                my_identifiers.add( ID_i )
-                                
-                        else:
-                            if_cosmic = num_cases = 0
-                    
-                        
-                    ########## ######### ######### INFO EXTRACTION FROM BAM FILES ########## ######### #########
-                    # Normal BAM file:
-                    n_reads = nbam.fetch( my_coordinate[0], my_coordinate[1]-1, my_coordinate[1] )
+                t_ref_bq        = mean(t_ref_read_bq)
+                t_alt_bq        = mean(t_alt_read_bq)
+                t_z_ranksums_bq = stats.ranksums(t_alt_read_bq, t_ref_read_bq)[0]
+                
+                t_ref_NM        = mean(t_ref_edit_distance)
+                t_alt_NM        = mean(t_alt_edit_distance)
+                t_z_ranksums_NM = stats.ranksums(t_alt_edit_distance, t_ref_edit_distance)[0]
+                t_NM_Diff       = t_alt_NM - t_ref_NM - abs(indel_length)
+                
+                t_concordance_fet = stats.fisher_exact(( (t_ref_concordant_reads, t_alt_concordant_reads), (t_ref_discordant_reads, t_alt_discordant_reads) ))[1]
+                t_strandbias_fet  = stats.fisher_exact(( (t_ref_for, t_alt_for), (t_ref_rev, t_alt_rev) ))[1]
+                t_clipping_fet    = stats.fisher_exact(( (t_ref_notSC_reads, t_alt_notSC_reads), (t_ref_SC_reads, t_alt_SC_reads) ))[1]
+                
+                t_z_ranksums_endpos = stats.ranksums(t_alt_pos_from_end, t_ref_pos_from_end)[0]
+                
+                t_ref_indel_1bp = t_ref_flanking_indel.count(1)
+                t_ref_indel_2bp = t_ref_flanking_indel.count(2) + t_ref_indel_1bp
+                t_ref_indel_3bp = t_ref_flanking_indel.count(3) + t_ref_indel_2bp + t_ref_indel_1bp
+                t_alt_indel_1bp = t_alt_flanking_indel.count(1)
+                t_alt_indel_2bp = t_alt_flanking_indel.count(2) + t_alt_indel_1bp
+                t_alt_indel_3bp = t_alt_flanking_indel.count(3) + t_alt_indel_2bp + t_alt_indel_1bp
     
-                    n_ref_read_mq = []
-                    n_alt_read_mq = []
-                    n_ref_read_bq = []
-                    n_alt_read_bq = []
-                    
-                    n_ref_edit_distance = []
-                    n_alt_edit_distance = []
-                    
-                    n_ref_concordant_reads = n_alt_concordant_reads = n_ref_discordant_reads = n_alt_discordant_reads = 0
-                    n_ref_for = n_ref_rev = n_alt_for = n_alt_rev = N_dp = 0
-                    n_ref_SC_reads = n_alt_SC_reads = n_ref_notSC_reads = n_alt_notSC_reads = 0
-                    n_MQ0 = 0
-                    
-                    n_ref_pos_from_end = []
-                    n_alt_pos_from_end = []
-                    n_ref_flanking_indel = []
-                    n_alt_flanking_indel = []
-                    
-                    n_noise_read_count = n_poor_read_count  = 0
-                    
-                    for read_i in n_reads:
-                        if not read_i.is_unmapped and dedup_test(read_i):
-                            
-                            N_dp += 1
-                            
-                            code_i, ith_base, base_call_i, indel_length_i, flanking_indel_i = position_of_aligned_read(read_i, my_coordinate[1]-1 )
-                            
-                            if read_i.mapping_quality < min_mq and mean(read_i.query_qualities) < min_bq:
-                                n_poor_read_count += 1
-                            
-                            if read_i.mapping_quality == 0:
-                                n_MQ0 += 1
-                            
-                            # Reference calls:
-                            if code_i == 1 and base_call_i == ref_base[0]:
-                            
-                                n_ref_read_mq.append( read_i.mapping_quality )
-                                n_ref_read_bq.append( read_i.query_qualities[ith_base] )
-                                
-                                try:
-                                    n_ref_edit_distance.append( read_i.get_tag('NM') )
-                                except KeyError:
-                                    pass
-                                
-                                # Concordance
-                                if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    n_ref_concordant_reads += 1
-                                elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    n_ref_discordant_reads += 1
-                                
-                                # Orientation
-                                if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    n_ref_for += 1
-                                elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    n_ref_rev += 1
-                                
-                                # Soft-clipped reads?
-                                if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
-                                    n_ref_SC_reads += 1
-                                else:
-                                    n_ref_notSC_reads += 1
-                                                                        
-                                # Distance from the end of the read:
-                                if ith_base != None:
-                                    n_ref_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
-                                    
-                                # Flanking indels:
-                                n_ref_flanking_indel.append( flanking_indel_i )
-    
-                            
-                            # Alternate calls:
-                            # SNV, or Deletion, or Insertion where I do not check for matching indel length
-                            elif (indel_length == 0 and code_i == 1 and base_call_i == first_alt) or \
-                                 (indel_length < 0  and code_i == 2 and indel_length == indel_length_i) or \
-                                 (indel_length > 0  and code_i == 3):
-                                
-                                n_alt_read_mq.append( read_i.mapping_quality )
-                                n_alt_read_bq.append( read_i.query_qualities[ith_base] )
-                                
-                                try:
-                                    n_alt_edit_distance.append( read_i.get_tag('NM') )
-                                except KeyError:
-                                    pass
-                                
-                                # Concordance
-                                if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    n_alt_concordant_reads += 1
-                                elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    n_alt_discordant_reads += 1
-                                
-                                # Orientation
-                                if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    n_alt_for += 1
-                                elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    n_alt_rev += 1
-                                
-                                # Soft-clipped reads?
-                                if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
-                                    n_alt_SC_reads += 1
-                                else:
-                                    n_alt_notSC_reads += 1
-    
-                                # Distance from the end of the read:
-                                if ith_base != None:
-                                    n_alt_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
-                                                        
-                                # Flanking indels:
-                                n_alt_flanking_indel.append( flanking_indel_i )
-                            
-                            
-                            # Inconsistent read or 2nd alternate calls:
-                            else:
-                                n_noise_read_count += 1
-                                    
-                    # Done extracting info from tumor BAM. Now tally them:
-                    n_ref_mq        = mean(n_ref_read_mq)
-                    n_alt_mq        = mean(n_alt_read_mq)
-                    n_z_ranksums_mq = stats.ranksums(n_alt_read_mq, n_ref_read_mq)[0]
-                    
-                    n_ref_bq        = mean(n_ref_read_bq)
-                    n_alt_bq        = mean(n_alt_read_bq)
-                    n_z_ranksums_bq = stats.ranksums(n_alt_read_bq, n_ref_read_bq)[0]
-                    
-                    n_ref_NM        = mean(n_ref_edit_distance)
-                    n_alt_NM        = mean(n_alt_edit_distance)
-                    n_z_ranksums_NM = stats.ranksums(n_alt_edit_distance, n_ref_edit_distance)[0]
-                    n_NM_Diff       = n_alt_NM - n_ref_NM - abs(indel_length)
-                    
-                    n_concordance_fet = stats.fisher_exact(( (n_ref_concordant_reads, n_alt_concordant_reads), (n_ref_discordant_reads, n_alt_discordant_reads) ))[1]
-                    n_strandbias_fet  = stats.fisher_exact(( (n_ref_for, n_alt_for), (n_ref_rev, n_alt_rev) ))[1]
-                    n_clipping_fet    = stats.fisher_exact(( (n_ref_notSC_reads, n_alt_notSC_reads), (n_ref_SC_reads, n_alt_SC_reads) ))[1]
-                    
-                    n_z_ranksums_endpos = stats.ranksums(n_alt_pos_from_end, n_ref_pos_from_end)[0]
-                    
-                    n_ref_indel_1bp = n_ref_flanking_indel.count(1)
-                    n_ref_indel_2bp = n_ref_flanking_indel.count(2) + n_ref_indel_1bp
-                    n_ref_indel_3bp = n_ref_flanking_indel.count(3) + n_ref_indel_2bp + n_ref_indel_1bp
-                    n_alt_indel_1bp = n_alt_flanking_indel.count(1)
-                    n_alt_indel_2bp = n_alt_flanking_indel.count(2) + n_alt_indel_1bp
-                    n_alt_indel_3bp = n_alt_flanking_indel.count(3) + n_alt_indel_2bp + n_alt_indel_1bp
-        
-                    
-                    ########################################################################################
-                    # Tumor BAM file:
-                    t_reads = tbam.fetch( my_coordinate[0], my_coordinate[1]-1, my_coordinate[1] )
-                    
-                    t_ref_read_mq = []
-                    t_alt_read_mq = []
-                    t_ref_read_bq = []
-                    t_alt_read_bq = []
-                    t_ref_edit_distance = []
-                    t_alt_edit_distance = []
-                    
-                    t_ref_concordant_reads = t_alt_concordant_reads = t_ref_discordant_reads = t_alt_discordant_reads = 0
-                    t_ref_for = t_ref_rev = t_alt_for = t_alt_rev = T_dp = 0
-                    t_ref_SC_reads = t_alt_SC_reads = t_ref_notSC_reads = t_alt_notSC_reads = 0
-                    t_MQ0 = 0
-                    
-                    t_ref_pos_from_end = []
-                    t_alt_pos_from_end = []
-                    t_ref_flanking_indel = []
-                    t_alt_flanking_indel = []
-                    
-                    t_noise_read_count = t_poor_read_count  = 0
-                    
-                    for read_i in t_reads:
-                        if not read_i.is_unmapped and dedup_test(read_i):
-                            
-                            T_dp += 1
-                            
-                            code_i, ith_base, base_call_i, indel_length_i, flanking_indel_i = position_of_aligned_read(read_i, my_coordinate[1]-1 )
-                            
-                            if read_i.mapping_quality < min_mq and mean(read_i.query_qualities) < min_bq:
-                                t_poor_read_count += 1
-                            
-                            if read_i.mapping_quality == 0:
-                                t_MQ0 += 1
-                            
-                            # Reference calls:
-                            if code_i == 1 and base_call_i == ref_base[0]:
-                            
-                                t_ref_read_mq.append( read_i.mapping_quality )
-                                t_ref_read_bq.append( read_i.query_qualities[ith_base] )
-                                
-                                try:
-                                    t_ref_edit_distance.append( read_i.get_tag('NM') )
-                                except KeyError:
-                                    pass
-                                
-                                # Concordance
-                                if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    t_ref_concordant_reads += 1
-                                elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    t_ref_discordant_reads += 1
-                                
-                                # Orientation
-                                if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    t_ref_for += 1
-                                elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    t_ref_rev += 1
-                                
-                                # Soft-clipped reads?
-                                if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
-                                    t_ref_SC_reads += 1
-                                else:
-                                    t_ref_notSC_reads += 1
-    
-                                # Distance from the end of the read:
-                                if ith_base != None:
-                                    t_ref_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
-                                    
-                                # Flanking indels:
-                                t_ref_flanking_indel.append( flanking_indel_i )
-    
-                            
-                            # Alternate calls:
-                            # SNV, or Deletion, or Insertion where I do not check for matching indel length
-                            elif (indel_length == 0 and code_i == 1 and base_call_i == first_alt) or \
-                                 (indel_length < 0  and code_i == 2 and indel_length == indel_length_i) or \
-                                 (indel_length > 0  and code_i == 3):
-                                
-                                t_alt_read_mq.append( read_i.mapping_quality )
-                                t_alt_read_bq.append( read_i.query_qualities[ith_base] )
-                                
-                                try:
-                                    t_alt_edit_distance.append( read_i.get_tag('NM') )
-                                except KeyError:
-                                    pass
-                                
-                                # Concordance
-                                if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    t_alt_concordant_reads += 1
-                                elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    t_alt_discordant_reads += 1
-                                
-                                # Orientation
-                                if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    t_alt_for += 1
-                                elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-                                    t_alt_rev += 1
-                                
-                                # Soft-clipped reads?
-                                if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
-                                    t_alt_SC_reads += 1
-                                else:
-                                    t_alt_notSC_reads += 1
-    
-                                # Distance from the end of the read:
-                                if ith_base != None:
-                                    t_alt_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
-                                                        
-                                # Flanking indels:
-                                t_alt_flanking_indel.append( flanking_indel_i )
-                            
-                            
-                            # Inconsistent read or 2nd alternate calls:
-                            else:
-                                t_noise_read_count += 1
-                                    
-                    
-                    # Done extracting info from tumor BAM. Now tally them:
-                    t_ref_mq        = mean(t_ref_read_mq)
-                    t_alt_mq        = mean(t_alt_read_mq)
-                    t_z_ranksums_mq = stats.ranksums(t_alt_read_mq, t_ref_read_mq)[0]
-                    
-                    t_ref_bq        = mean(t_ref_read_bq)
-                    t_alt_bq        = mean(t_alt_read_bq)
-                    t_z_ranksums_bq = stats.ranksums(t_alt_read_bq, t_ref_read_bq)[0]
-                    
-                    t_ref_NM        = mean(t_ref_edit_distance)
-                    t_alt_NM        = mean(t_alt_edit_distance)
-                    t_z_ranksums_NM = stats.ranksums(t_alt_edit_distance, t_ref_edit_distance)[0]
-                    t_NM_Diff       = t_alt_NM - t_ref_NM - abs(indel_length)
-                    
-                    t_concordance_fet = stats.fisher_exact(( (t_ref_concordant_reads, t_alt_concordant_reads), (t_ref_discordant_reads, t_alt_discordant_reads) ))[1]
-                    t_strandbias_fet  = stats.fisher_exact(( (t_ref_for, t_alt_for), (t_ref_rev, t_alt_rev) ))[1]
-                    t_clipping_fet    = stats.fisher_exact(( (t_ref_notSC_reads, t_alt_notSC_reads), (t_ref_SC_reads, t_alt_SC_reads) ))[1]
-                    
-                    t_z_ranksums_endpos = stats.ranksums(t_alt_pos_from_end, t_ref_pos_from_end)[0]
-                    
-                    t_ref_indel_1bp = t_ref_flanking_indel.count(1)
-                    t_ref_indel_2bp = t_ref_flanking_indel.count(2) + t_ref_indel_1bp
-                    t_ref_indel_3bp = t_ref_flanking_indel.count(3) + t_ref_indel_2bp + t_ref_indel_1bp
-                    t_alt_indel_1bp = t_alt_flanking_indel.count(1)
-                    t_alt_indel_2bp = t_alt_flanking_indel.count(2) + t_alt_indel_1bp
-                    t_alt_indel_3bp = t_alt_flanking_indel.count(3) + t_alt_indel_2bp + t_alt_indel_1bp
-        
-                    
-                    # Odds Ratio (just like VarDict, but get from BAM)
-                    sor_numerator   = (n_alt_for + n_alt_rev) * (t_ref_for + t_ref_rev)
-                    sor_denominator = (n_ref_for + n_ref_rev) * (t_alt_for + t_alt_rev)
-                    if sor_numerator == 0 and sor_denominator == 0:
-                        sor = nan
-                    elif sor_denominator == 0:
+                
+                # Odds Ratio (just like VarDict, but get from BAM)
+                sor_numerator   = (n_alt_for + n_alt_rev) * (t_ref_for + t_ref_rev)
+                sor_denominator = (n_ref_for + n_ref_rev) * (t_alt_for + t_alt_rev)
+                if sor_numerator == 0 and sor_denominator == 0:
+                    sor = nan
+                elif sor_denominator == 0:
+                    sor = 100
+                else:
+                    sor = sor_numerator / sor_denominator
+                    if sor >= 100:
                         sor = 100
+                
+                ############################################################################################
+                ############################################################################################
+                # Homopolymer eval (Make sure to modify for INDEL):
+                # The min and max is to prevent the +/- 20 bases from exceeding the reference sequence
+                lseq  = ref_fa.fetch(my_coordinate[0], max(0, my_coordinate[1]-20), my_coordinate[1])
+                rseq  = ref_fa.fetch(my_coordinate[0], my_coordinate[1]+1, min(ref_fa.get_reference_length(my_coordinate[0])+1, my_coordinate[1]+21) )
+                
+                # This is to get around buy in old version of pysam that reads the reference sequence in bytes instead of strings
+                lseq = lseq.decode() if isinstance(lseq, bytes) else lseq
+                rseq = rseq.decode() if isinstance(rseq, bytes) else rseq
+                
+                seq41_ref = lseq + ref_base  + rseq
+                seq41_alt = lseq + first_alt + rseq
+                
+                ref_counts = genome.count_repeating_bases(seq41_ref)
+                alt_counts = genome.count_repeating_bases(seq41_alt)
+                
+                homopolymer_length = max( max(ref_counts), max(alt_counts) )
+                
+                # Homopolymer spanning the variant site:
+                ref_c = 0
+                alt_c = 0
+                for i in rseq:
+                    if i == ref_base:
+                        ref_c += 1
                     else:
-                        sor = sor_numerator / sor_denominator
-                        if sor >= 100:
-                            sor = 100
-                    
-                    ############################################################################################
-                    ############################################################################################
-                    # Homopolymer eval (Make sure to modify for INDEL):
-                    # The min and max is to prevent the +/- 20 bases from exceeding the reference sequence
-                    lseq  = ref_fa.fetch(my_coordinate[0], max(0, my_coordinate[1]-20), my_coordinate[1])
-                    rseq  = ref_fa.fetch(my_coordinate[0], my_coordinate[1]+1, min(ref_fa.get_reference_length(my_coordinate[0])+1, my_coordinate[1]+21) )
-                    
-                    # This is to get around buy in old version of pysam that reads the reference sequence in bytes instead of strings
-                    lseq = lseq.decode() if isinstance(lseq, bytes) else lseq
-                    rseq = rseq.decode() if isinstance(rseq, bytes) else rseq
-                    
-                    seq41_ref = lseq + ref_base  + rseq
-                    seq41_alt = lseq + first_alt + rseq
-                    
-                    ref_counts = genome.count_repeating_bases(seq41_ref)
-                    alt_counts = genome.count_repeating_bases(seq41_alt)
-                    
-                    homopolymer_length = max( max(ref_counts), max(alt_counts) )
-                    
-                    # Homopolymer spanning the variant site:
-                    ref_c = 0
-                    alt_c = 0
-                    for i in rseq:
-                        if i == ref_base:
-                            ref_c += 1
-                        else:
-                            break
-                            
-                    for i in lseq[::-1]:
-                        if i == ref_base:
-                            ref_c += 1
-                        else:
-                            break
-                    
-                    for i in rseq:
-                        if i == first_alt:
-                            alt_c += 1
-                        else:
-                            break
-                            
-                    for i in lseq[::-1]:
-                        if i == first_alt:
-                            alt_c += 1
-                        else:
-                            break
-        
-                    site_homopolymer_length = max( alt_c+1, ref_c+1 )
-        
-                    if my_identifiers:
-                        my_identifiers = ';'.join(my_identifiers)
-                    else:
-                        my_identifiers = '.'
+                        break
                         
-                    ###
-                    out_line = out_header.format( \
-                    CHROM                   = my_coordinate[0],                                       \
-                    POS                     = my_coordinate[1],                                       \
-                    ID                      = my_identifiers,                                         \
-                    REF                     = ref_base,                                               \
-                    ALT                     = first_alt,                                              \
-                    if_MuTect               = mutect_classification,                                  \
-                    if_Strelka              = strelka_classification,                                 \
-                    if_VarScan2             = varscan_classification,                                 \
-                    if_JointSNVMix2         = jointsnvmix2_classification,                            \
-                    if_SomaticSniper        = sniper_classification,                                  \
-                    if_VarDict              = vardict_classification,                                 \
-                    if_LoFreq               = lofreq_classification,                                  \
-                    if_Scalpel              = scalpel_classification,                                 \
-                    MuSE_Tier               = muse_classification,                                    \
-                    Strelka_Score           = somatic_evs,                                            \
-                    Strelka_QSS             = qss,                                                    \
-                    Strelka_TQSS            = tqss,                                                   \
-                    VarScan2_Score          = rescale(score_varscan2,      'phred', p_scale, 1001),   \
-                    SNVMix2_Score           = rescale(score_jointsnvmix2,  'phred', p_scale, 1001),   \
-                    Sniper_Score            = rescale(score_somaticsniper, 'phred', p_scale, 1001),   \
-                    VarDict_Score           = rescale(score_vardict,       'phred', p_scale, 1001),   \
-                    if_dbsnp                = if_dbsnp,                                               \
-                    COMMON                  = if_common,                                              \
-                    if_COSMIC               = if_cosmic,                                              \
-                    COSMIC_CNT              = num_cases,                                              \
-                    N_DP                    = N_dp,                                                   \
-                    nBAM_REF_MQ             = '%g' % n_ref_mq,                                        \
-                    nBAM_ALT_MQ             = '%g' % n_alt_mq,                                        \
-                    nBAM_Z_Ranksums_MQ      = '%g' % n_z_ranksums_mq,                                 \
-                    nBAM_REF_BQ             = '%g' % n_ref_bq,                                        \
-                    nBAM_ALT_BQ             = '%g' % n_alt_bq,                                        \
-                    nBAM_Z_Ranksums_BQ      = '%g' % n_z_ranksums_bq,                                 \
-                    nBAM_REF_NM             = '%g' % n_ref_NM,                                        \
-                    nBAM_ALT_NM             = '%g' % n_alt_NM,                                        \
-                    nBAM_NM_Diff            = '%g' % n_NM_Diff,                                       \
-                    nBAM_REF_Concordant     = n_ref_concordant_reads,                                 \
-                    nBAM_REF_Discordant     = n_ref_discordant_reads,                                 \
-                    nBAM_ALT_Concordant     = n_alt_concordant_reads,                                 \
-                    nBAM_ALT_Discordant     = n_alt_discordant_reads,                                 \
-                    nBAM_Concordance_FET    = rescale(n_concordance_fet, 'fraction', p_scale, 1001),  \
-                    N_REF_FOR               = n_ref_for,                                              \
-                    N_REF_REV               = n_ref_rev,                                              \
-                    N_ALT_FOR               = n_alt_for,                                              \
-                    N_ALT_REV               = n_alt_rev,                                              \
-                    nBAM_StrandBias_FET     = rescale(n_strandbias_fet, 'fraction', p_scale, 1001),   \
-                    nBAM_Z_Ranksums_EndPos  = '%g' % n_z_ranksums_endpos,                             \
-                    nBAM_REF_Clipped_Reads  = n_ref_SC_reads,                                         \
-                    nBAM_ALT_Clipped_Reads  = n_alt_SC_reads,                                         \
-                    nBAM_Clipping_FET       = rescale(n_clipping_fet, 'fraction', p_scale, 1001),     \
-                    nBAM_MQ0                = n_MQ0,                                                  \
-                    nBAM_Other_Reads        = n_noise_read_count,                                     \
-                    nBAM_Poor_Reads         = n_poor_read_count,                                      \
-                    nBAM_REF_InDel_3bp      = n_ref_indel_3bp,                                        \
-                    nBAM_REF_InDel_2bp      = n_ref_indel_2bp,                                        \
-                    nBAM_REF_InDel_1bp      = n_ref_indel_1bp,                                        \
-                    nBAM_ALT_InDel_3bp      = n_alt_indel_3bp,                                        \
-                    nBAM_ALT_InDel_2bp      = n_alt_indel_2bp,                                        \
-                    nBAM_ALT_InDel_1bp      = n_alt_indel_1bp,                                        \
-                    M2_RPA                  = rpa,                                                    \
-                    M2_NLOD                 = nlod,                                                   \
-                    M2_TLOD                 = tlod,                                                   \
-                    M2_STR                  = tandem,                                                 \
-                    M2_ECNT                 = ecnt,                                                   \
-                    M2_HCNT                 = hcnt,                                                   \
-                    M2_MAXED                = maxED,                                                  \
-                    M2_MINED                = minED,                                                  \
-                    SOR                     = sor,                                                    \
-                    MSI                     = msi,                                                    \
-                    MSILEN                  = msilen,                                                 \
-                    SHIFT3                  = shift3,                                                 \
-                    MaxHomopolymer_Length   = homopolymer_length,                                     \
-                    SiteHomopolymer_Length  = site_homopolymer_length,                                \
-                    T_DP                    = T_dp,                                                   \
-                    tBAM_REF_MQ             = '%g' % t_ref_mq,                                        \
-                    tBAM_ALT_MQ             = '%g' % t_alt_mq,                                        \
-                    tBAM_Z_Ranksums_MQ      = '%g' % t_z_ranksums_mq,                                 \
-                    tBAM_REF_BQ             = '%g' % t_ref_bq,                                        \
-                    tBAM_ALT_BQ             = '%g' % t_alt_bq,                                        \
-                    tBAM_Z_Ranksums_BQ      = '%g' % t_z_ranksums_bq,                                 \
-                    tBAM_REF_NM             = '%g' % t_ref_NM,                                        \
-                    tBAM_ALT_NM             = '%g' % t_alt_NM,                                        \
-                    tBAM_NM_Diff            = '%g' % t_NM_Diff,                                       \
-                    tBAM_REF_Concordant     = t_ref_concordant_reads,                                 \
-                    tBAM_REF_Discordant     = t_ref_discordant_reads,                                 \
-                    tBAM_ALT_Concordant     = t_alt_concordant_reads,                                 \
-                    tBAM_ALT_Discordant     = t_alt_discordant_reads,                                 \
-                    tBAM_Concordance_FET    = rescale(t_concordance_fet, 'fraction', p_scale, 1001),  \
-                    T_REF_FOR               = t_ref_for,                                              \
-                    T_REF_REV               = t_ref_rev,                                              \
-                    T_ALT_FOR               = t_alt_for,                                              \
-                    T_ALT_REV               = t_alt_rev,                                              \
-                    tBAM_StrandBias_FET     = rescale(t_strandbias_fet, 'fraction', p_scale, 1001),   \
-                    tBAM_Z_Ranksums_EndPos  = '%g' % t_z_ranksums_endpos,                             \
-                    tBAM_REF_Clipped_Reads  = t_ref_SC_reads,                                         \
-                    tBAM_ALT_Clipped_Reads  = t_alt_SC_reads,                                         \
-                    tBAM_Clipping_FET       = rescale(t_clipping_fet, 'fraction', p_scale, 1001),     \
-                    tBAM_MQ0                = t_MQ0,                                                  \
-                    tBAM_Other_Reads        = t_noise_read_count,                                     \
-                    tBAM_Poor_Reads         = t_poor_read_count,                                      \
-                    tBAM_REF_InDel_3bp      = t_ref_indel_3bp,                                        \
-                    tBAM_REF_InDel_2bp      = t_ref_indel_2bp,                                        \
-                    tBAM_REF_InDel_1bp      = t_ref_indel_1bp,                                        \
-                    tBAM_ALT_InDel_3bp      = t_alt_indel_3bp,                                        \
-                    tBAM_ALT_InDel_2bp      = t_alt_indel_2bp,                                        \
-                    tBAM_ALT_InDel_1bp      = t_alt_indel_1bp,                                        \
-                    InDel_Length            = indel_length,                                           \
-                    TrueVariant_or_False    = judgement )
+                for i in lseq[::-1]:
+                    if i == ref_base:
+                        ref_c += 1
+                    else:
+                        break
+                
+                for i in rseq:
+                    if i == first_alt:
+                        alt_c += 1
+                    else:
+                        break
+                        
+                for i in lseq[::-1]:
+                    if i == first_alt:
+                        alt_c += 1
+                    else:
+                        break
+    
+                site_homopolymer_length = max( alt_c+1, ref_c+1 )
+    
+                if my_identifiers:
+                    my_identifiers = ';'.join(my_identifiers)
+                else:
+                    my_identifiers = '.'
                     
-                    # Print it out to stdout:
-                    outhandle.write(out_line + '\n')
+                ###
+                out_line = out_header.format( \
+                CHROM                   = my_coordinate[0],                                       \
+                POS                     = my_coordinate[1],                                       \
+                ID                      = my_identifiers,                                         \
+                REF                     = ref_base,                                               \
+                ALT                     = first_alt,                                              \
+                if_MuTect               = mutect_classification,                                  \
+                if_Strelka              = strelka_classification,                                 \
+                if_VarScan2             = varscan_classification,                                 \
+                if_JointSNVMix2         = jointsnvmix2_classification,                            \
+                if_SomaticSniper        = sniper_classification,                                  \
+                if_VarDict              = vardict_classification,                                 \
+                if_LoFreq               = lofreq_classification,                                  \
+                if_Scalpel              = scalpel_classification,                                 \
+                MuSE_Tier               = muse_classification,                                    \
+                Strelka_Score           = somatic_evs,                                            \
+                Strelka_QSS             = qss,                                                    \
+                Strelka_TQSS            = tqss,                                                   \
+                VarScan2_Score          = rescale(score_varscan2,      'phred', p_scale, 1001),   \
+                SNVMix2_Score           = rescale(score_jointsnvmix2,  'phred', p_scale, 1001),   \
+                Sniper_Score            = rescale(score_somaticsniper, 'phred', p_scale, 1001),   \
+                VarDict_Score           = rescale(score_vardict,       'phred', p_scale, 1001),   \
+                if_dbsnp                = if_dbsnp,                                               \
+                COMMON                  = if_common,                                              \
+                if_COSMIC               = if_cosmic,                                              \
+                COSMIC_CNT              = num_cases,                                              \
+                N_DP                    = N_dp,                                                   \
+                nBAM_REF_MQ             = '%g' % n_ref_mq,                                        \
+                nBAM_ALT_MQ             = '%g' % n_alt_mq,                                        \
+                nBAM_Z_Ranksums_MQ      = '%g' % n_z_ranksums_mq,                                 \
+                nBAM_REF_BQ             = '%g' % n_ref_bq,                                        \
+                nBAM_ALT_BQ             = '%g' % n_alt_bq,                                        \
+                nBAM_Z_Ranksums_BQ      = '%g' % n_z_ranksums_bq,                                 \
+                nBAM_REF_NM             = '%g' % n_ref_NM,                                        \
+                nBAM_ALT_NM             = '%g' % n_alt_NM,                                        \
+                nBAM_NM_Diff            = '%g' % n_NM_Diff,                                       \
+                nBAM_REF_Concordant     = n_ref_concordant_reads,                                 \
+                nBAM_REF_Discordant     = n_ref_discordant_reads,                                 \
+                nBAM_ALT_Concordant     = n_alt_concordant_reads,                                 \
+                nBAM_ALT_Discordant     = n_alt_discordant_reads,                                 \
+                nBAM_Concordance_FET    = rescale(n_concordance_fet, 'fraction', p_scale, 1001),  \
+                N_REF_FOR               = n_ref_for,                                              \
+                N_REF_REV               = n_ref_rev,                                              \
+                N_ALT_FOR               = n_alt_for,                                              \
+                N_ALT_REV               = n_alt_rev,                                              \
+                nBAM_StrandBias_FET     = rescale(n_strandbias_fet, 'fraction', p_scale, 1001),   \
+                nBAM_Z_Ranksums_EndPos  = '%g' % n_z_ranksums_endpos,                             \
+                nBAM_REF_Clipped_Reads  = n_ref_SC_reads,                                         \
+                nBAM_ALT_Clipped_Reads  = n_alt_SC_reads,                                         \
+                nBAM_Clipping_FET       = rescale(n_clipping_fet, 'fraction', p_scale, 1001),     \
+                nBAM_MQ0                = n_MQ0,                                                  \
+                nBAM_Other_Reads        = n_noise_read_count,                                     \
+                nBAM_Poor_Reads         = n_poor_read_count,                                      \
+                nBAM_REF_InDel_3bp      = n_ref_indel_3bp,                                        \
+                nBAM_REF_InDel_2bp      = n_ref_indel_2bp,                                        \
+                nBAM_REF_InDel_1bp      = n_ref_indel_1bp,                                        \
+                nBAM_ALT_InDel_3bp      = n_alt_indel_3bp,                                        \
+                nBAM_ALT_InDel_2bp      = n_alt_indel_2bp,                                        \
+                nBAM_ALT_InDel_1bp      = n_alt_indel_1bp,                                        \
+                M2_RPA                  = rpa,                                                    \
+                M2_NLOD                 = nlod,                                                   \
+                M2_TLOD                 = tlod,                                                   \
+                M2_STR                  = tandem,                                                 \
+                M2_ECNT                 = ecnt,                                                   \
+                M2_HCNT                 = hcnt,                                                   \
+                M2_MAXED                = maxED,                                                  \
+                M2_MINED                = minED,                                                  \
+                SOR                     = sor,                                                    \
+                MSI                     = msi,                                                    \
+                MSILEN                  = msilen,                                                 \
+                SHIFT3                  = shift3,                                                 \
+                MaxHomopolymer_Length   = homopolymer_length,                                     \
+                SiteHomopolymer_Length  = site_homopolymer_length,                                \
+                T_DP                    = T_dp,                                                   \
+                tBAM_REF_MQ             = '%g' % t_ref_mq,                                        \
+                tBAM_ALT_MQ             = '%g' % t_alt_mq,                                        \
+                tBAM_Z_Ranksums_MQ      = '%g' % t_z_ranksums_mq,                                 \
+                tBAM_REF_BQ             = '%g' % t_ref_bq,                                        \
+                tBAM_ALT_BQ             = '%g' % t_alt_bq,                                        \
+                tBAM_Z_Ranksums_BQ      = '%g' % t_z_ranksums_bq,                                 \
+                tBAM_REF_NM             = '%g' % t_ref_NM,                                        \
+                tBAM_ALT_NM             = '%g' % t_alt_NM,                                        \
+                tBAM_NM_Diff            = '%g' % t_NM_Diff,                                       \
+                tBAM_REF_Concordant     = t_ref_concordant_reads,                                 \
+                tBAM_REF_Discordant     = t_ref_discordant_reads,                                 \
+                tBAM_ALT_Concordant     = t_alt_concordant_reads,                                 \
+                tBAM_ALT_Discordant     = t_alt_discordant_reads,                                 \
+                tBAM_Concordance_FET    = rescale(t_concordance_fet, 'fraction', p_scale, 1001),  \
+                T_REF_FOR               = t_ref_for,                                              \
+                T_REF_REV               = t_ref_rev,                                              \
+                T_ALT_FOR               = t_alt_for,                                              \
+                T_ALT_REV               = t_alt_rev,                                              \
+                tBAM_StrandBias_FET     = rescale(t_strandbias_fet, 'fraction', p_scale, 1001),   \
+                tBAM_Z_Ranksums_EndPos  = '%g' % t_z_ranksums_endpos,                             \
+                tBAM_REF_Clipped_Reads  = t_ref_SC_reads,                                         \
+                tBAM_ALT_Clipped_Reads  = t_alt_SC_reads,                                         \
+                tBAM_Clipping_FET       = rescale(t_clipping_fet, 'fraction', p_scale, 1001),     \
+                tBAM_MQ0                = t_MQ0,                                                  \
+                tBAM_Other_Reads        = t_noise_read_count,                                     \
+                tBAM_Poor_Reads         = t_poor_read_count,                                      \
+                tBAM_REF_InDel_3bp      = t_ref_indel_3bp,                                        \
+                tBAM_REF_InDel_2bp      = t_ref_indel_2bp,                                        \
+                tBAM_REF_InDel_1bp      = t_ref_indel_1bp,                                        \
+                tBAM_ALT_InDel_3bp      = t_alt_indel_3bp,                                        \
+                tBAM_ALT_InDel_2bp      = t_alt_indel_2bp,                                        \
+                tBAM_ALT_InDel_1bp      = t_alt_indel_1bp,                                        \
+                InDel_Length            = indel_length,                                           \
+                TrueVariant_or_False    = judgement )
+                
+                # Print it out to stdout:
+                outhandle.write(out_line + '\n')
         
         # Read into the next line:
         if not is_vcf:
             my_line = my_sites.readline().rstrip()
         
     ##########  Close all open files if they were opened  ##########
-    opened_files = (ref_fa, nbam, tbam, truth, cosmic, dbsnp, mutect, strelka, sniper, varscan, jsm, vardict, muse, lofreq, scalpel)
+    opened_files = (ref_fa, nbam, tbam, truth, cosmic, dbsnp)
     [opened_file.close() for opened_file in opened_files if opened_file]
