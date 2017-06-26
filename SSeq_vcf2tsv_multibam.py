@@ -15,10 +15,10 @@ input_sites.add_argument('-myvcf',  '--vcf-format',           type=str,   help='
 input_sites.add_argument('-mybed',  '--bed-format',           type=str,   help='Input file is BED formatted.', required=False, default=None)
 input_sites.add_argument('-mypos',  '--positions-list',       type=str,   help='A list of positions: tab seperating contig and positions.', required=False, default=None)
 
-parser.add_argument('-nprefix', '--tumor-prefixes',   narg='*', type=str,   help='normal prefixes',  required=True, default=None)
-parser.add_argument('-tprefix', '--normal-prefixes',  narg='*', type=str,   help='tumor prefixes',   required=True, default=None)
-parser.add_argument('-nbams',   '--normal-bam-files', narg='*', type=str,   help='Normal BAM Files', required=True, default=None)
-parser.add_argument('-tbams',   '--tumor-bam-files',  narg='*', type=str,   help='Tumor BAM Files',  required=True, default=None)
+parser.add_argument('-nprefix', '--tumor-prefixes',   nargs='*', type=str,   help='normal prefixes',  required=True, default=None)
+parser.add_argument('-tprefix', '--normal-prefixes',  nargs='*', type=str,   help='tumor prefixes',   required=True, default=None)
+parser.add_argument('-nbams',   '--normal-bam-files', nargs='*', type=str,   help='Normal BAM Files', required=True, default=None)
+parser.add_argument('-tbams',   '--tumor-bam-files',  nargs='*', type=str,   help='Tumor BAM Files',  required=True, default=None)
 
 parser.add_argument('-truth',     '--ground-truth-vcf',       type=str,   help='VCF of true hits',  required=False, default=None)
 parser.add_argument('-dbsnp',     '--dbsnp-vcf',              type=str,   help='dbSNP VCF: do not use if input VCF is annotated', required=False, default=None)
@@ -168,13 +168,13 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
     t_files = []
     bam_files = []
     for nbam_i, tbam_i in paired_bams:
-		vars()[nbam] = pysam.AlignmentFile(nbam_i)
-		vars()[tbam] = pysam.AlignmentFile(tbam_i)
-		n_files.append( vars()[nbam] )
-		t_files.append( vars()[tbam] )
-		bam_files.append( vars()[nbam] )
-		bam_files.append( vars()[tbam] )
-		
+        vars()[nbam] = pysam.AlignmentFile(nbam_i)
+        vars()[tbam] = pysam.AlignmentFile(tbam_i)
+        n_files.append( vars()[nbam] )
+        t_files.append( vars()[tbam] )
+        bam_files.append( vars()[nbam] )
+        bam_files.append( vars()[tbam] )
+        
     if truth:
         truth = genome.open_textfile(truth)
         truth_line = truth.readline().rstrip()
@@ -380,236 +380,236 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 
                 ########################################################################################
                 # BAM file:
-				bam_DP                = []
-				bam_REF_MQ            = []
-				bam_ALT_MQ            = []
-				bam_Z_Ranksums_MQ     = []
-				bam_REF_BQ            = []
-				bam_ALT_BQ            = []
-				bam_Z_Ranksums_BQ     = []
-				bam_REF_NM            = []
-				bam_ALT_NM            = []
-				bam_NM_Diff           = []
-				bam_REF_Concordant    = []
-				bam_REF_Discordant    = []
-				bam_ALT_Concordant    = []
-				bam_ALT_Discordant    = []
-				bam_Concordance_FET   = []
-				bam_REF_FOR           = []
-				bam_REF_REV           = []
-				bam_ALT_FOR           = []
-				bam_ALT_REV           = []
-				bam_StrandBias_FET    = []
-				bam_Z_Ranksums_EndPos = []
-				bam_REF_Clipped_Reads = []
-				bam_ALT_Clipped_Reads = []
-				bam_Clipping_FET      = []
-				bam_MQ0               = []
-				bam_Other_Reads       = []
-				bam_Poor_Reads        = []
-				bam_REF_InDel_3bp     = []
-				bam_REF_InDel_2bp     = []
-				bam_REF_InDel_1bp     = []
-				bam_ALT_InDel_3bp     = []
-				bam_ALT_InDel_2bp     = []
-				bam_ALT_InDel_1bp     = []
-				bam_SOR               = []
-							                
+                bam_DP                = []
+                bam_REF_MQ            = []
+                bam_ALT_MQ            = []
+                bam_Z_Ranksums_MQ     = []
+                bam_REF_BQ            = []
+                bam_ALT_BQ            = []
+                bam_Z_Ranksums_BQ     = []
+                bam_REF_NM            = []
+                bam_ALT_NM            = []
+                bam_NM_Diff           = []
+                bam_REF_Concordant    = []
+                bam_REF_Discordant    = []
+                bam_ALT_Concordant    = []
+                bam_ALT_Discordant    = []
+                bam_Concordance_FET   = []
+                bam_REF_FOR           = []
+                bam_REF_REV           = []
+                bam_ALT_FOR           = []
+                bam_ALT_REV           = []
+                bam_StrandBias_FET    = []
+                bam_Z_Ranksums_EndPos = []
+                bam_REF_Clipped_Reads = []
+                bam_ALT_Clipped_Reads = []
+                bam_Clipping_FET      = []
+                bam_MQ0               = []
+                bam_Other_Reads       = []
+                bam_Poor_Reads        = []
+                bam_REF_InDel_3bp     = []
+                bam_REF_InDel_2bp     = []
+                bam_REF_InDel_1bp     = []
+                bam_ALT_InDel_3bp     = []
+                bam_ALT_InDel_2bp     = []
+                bam_ALT_InDel_1bp     = []
+                bam_SOR               = []
+                                            
                 for bam_i in bam_files:
                 
-	                bam_reads = bam_i.fetch( my_coordinate[0], my_coordinate[1]-1, my_coordinate[1] )
-	                
-	                bam_ref_read_mq = []
-	                bam_alt_read_mq = []
-	                bam_ref_read_bq = []
-	                bam_alt_read_bq = []
-	                bam_ref_edit_distance = []
-	                bam_alt_edit_distance = []
-	                
-	                bam_ref_concordant_reads = bam_alt_concordant_reads = bam_ref_discordant_reads = bam_alt_discordant_reads = 0
-	                bam_ref_for = bam_ref_rev = bam_alt_for = bam_alt_rev = bam_dp = 0
-	                bam_ref_SC_reads = bam_alt_SC_reads = bam_ref_notSC_reads = bam_alt_notSC_reads = 0
-	                bam_MQ0 = 0
-	                
-	                bam_ref_pos_from_end = []
-	                bam_alt_pos_from_end = []
-	                bam_ref_flanking_indel = []
-	                bam_alt_flanking_indel = []
-	                
-	                bam_noise_read_count = bam_poor_read_count  = 0
-	                
-	                for read_i in bam_reads:
-	                    if not read_i.is_unmapped and dedup_test(read_i):
-	                        
-	                        bam_dp += 1
-	                        
-	                        code_i, ith_base, base_call_i, indel_length_i, flanking_indel_i = position_of_aligned_read(read_i, my_coordinate[1]-1 )
-	                        
-	                        if read_i.mapping_quality < min_mq and mean(read_i.query_qualities) < min_bq:
-	                            bam_poor_read_count += 1
-	                        
-	                        if read_i.mapping_quality == 0:
-	                            bam_MQ0 += 1
-	                        
-	                        # Reference calls:
-	                        if code_i == 1 and base_call_i == ref_base[0]:
-	                        
-	                            bam_ref_read_mq.append( read_i.mapping_quality )
-	                            bam_ref_read_bq.append( read_i.query_qualities[ith_base] )
-	                            
-	                            try:
-	                                bam_ref_edit_distance.append( read_i.get_tag('NM') )
-	                            except KeyError:
-	                                pass
-	                            
-	                            # Concordance
-	                            if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-	                                bam_ref_concordant_reads += 1
-	                            elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-	                                bam_ref_discordant_reads += 1
-	                            
-	                            # Orientation
-	                            if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-	                                bam_ref_for += 1
-	                            elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-	                                bam_ref_rev += 1
-	                            
-	                            # Soft-clipped reads?
-	                            if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
-	                                bam_ref_SC_reads += 1
-	                            else:
-	                                bam_ref_notSC_reads += 1
-	
-	                            # Distance from the end of the read:
-	                            if ith_base != None:
-	                                bam_ref_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
-	                                
-	                            # Flanking indels:
-	                            bam_ref_flanking_indel.append( flanking_indel_i )
-	
-	                        
-	                        # Alternate calls:
-	                        # SNV, or Deletion, or Insertion where I do not check for matching indel length
-	                        elif (indel_length == 0 and code_i == 1 and base_call_i == first_alt) or \
-	                             (indel_length < 0  and code_i == 2 and indel_length == indel_length_i) or \
-	                             (indel_length > 0  and code_i == 3):
-	                            
-	                            bam_alt_read_mq.append( read_i.mapping_quality )
-	                            bam_alt_read_bq.append( read_i.query_qualities[ith_base] )
-	                            
-	                            try:
-	                                bam_alt_edit_distance.append( read_i.get_tag('NM') )
-	                            except KeyError:
-	                                pass
-	                            
-	                            # Concordance
-	                            if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-	                                bam_alt_concordant_reads += 1
-	                            elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-	                                bam_alt_discordant_reads += 1
-	                            
-	                            # Orientation
-	                            if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-	                                bam_alt_for += 1
-	                            elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
-	                                bam_alt_rev += 1
-	                            
-	                            # Soft-clipped reads?
-	                            if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
-	                                bam_alt_SC_reads += 1
-	                            else:
-	                                bam_alt_notSC_reads += 1
-	
-	                            # Distance from the end of the read:
-	                            if ith_base != None:
-	                                bam_alt_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
-	                                                    
-	                            # Flanking indels:
-	                            bam_alt_flanking_indel.append( flanking_indel_i )
-	                        
-	                        
-	                        # Inconsistent read or 2nd alternate calls:
-	                        else:
-	                            bam_noise_read_count += 1
-	                                
-	                
-	                # Done extracting info from tumor BAM. Now tally them:
-	                bam_ref_mq        = mean(bam_ref_read_mq)
-	                bam_alt_mq        = mean(bam_alt_read_mq)
-	                bam_z_ranksums_mq = stats.ranksums(bam_alt_read_mq, bam_ref_read_mq)[0]
-	                
-	                bam_ref_bq        = mean(bam_ref_read_bq)
-	                bam_alt_bq        = mean(bam_alt_read_bq)
-	                bam_z_ranksums_bq = stats.ranksums(bam_alt_read_bq, bam_ref_read_bq)[0]
-	                
-	                bam_ref_NM        = mean(bam_ref_edit_distance)
-	                bam_alt_NM        = mean(bam_alt_edit_distance)
-	                
-	                bam_concordance_fet = stats.fisher_exact(( (bam_ref_concordant_reads, bam_alt_concordant_reads), (bam_ref_discordant_reads, bam_alt_discordant_reads) ))[1]
-	                bam_strandbias_fet  = stats.fisher_exact(( (bam_ref_for, bam_alt_for), (bam_ref_rev, bam_alt_rev) ))[1]
-	                bam_clipping_fet    = stats.fisher_exact(( (bam_ref_notSC_reads, bam_alt_notSC_reads), (bam_ref_SC_reads, bam_alt_SC_reads) ))[1]
-	                
-	                bam_z_ranksums_endpos = stats.ranksums(bam_alt_pos_from_end, bam_ref_pos_from_end)[0]
-	                
-	                bam_ref_indel_1bp = bam_ref_flanking_indel.count(1)
-	                bam_ref_indel_2bp = bam_ref_flanking_indel.count(2) + bam_ref_indel_1bp
-	                bam_ref_indel_3bp = bam_ref_flanking_indel.count(3) + bam_ref_indel_2bp + bam_ref_indel_1bp
-	                bam_alt_indel_1bp = bam_alt_flanking_indel.count(1)
-	                bam_alt_indel_2bp = bam_alt_flanking_indel.count(2) + bam_alt_indel_1bp
-	                bam_alt_indel_3bp = bam_alt_flanking_indel.count(3) + bam_alt_indel_2bp + bam_alt_indel_1bp
-	    
+                    bam_reads = bam_i.fetch( my_coordinate[0], my_coordinate[1]-1, my_coordinate[1] )
+                    
+                    bam_ref_read_mq = []
+                    bam_alt_read_mq = []
+                    bam_ref_read_bq = []
+                    bam_alt_read_bq = []
+                    bam_ref_edit_distance = []
+                    bam_alt_edit_distance = []
+                    
+                    bam_ref_concordant_reads = bam_alt_concordant_reads = bam_ref_discordant_reads = bam_alt_discordant_reads = 0
+                    bam_ref_for = bam_ref_rev = bam_alt_for = bam_alt_rev = bam_dp = 0
+                    bam_ref_SC_reads = bam_alt_SC_reads = bam_ref_notSC_reads = bam_alt_notSC_reads = 0
+                    bam_MQ0 = 0
+                    
+                    bam_ref_pos_from_end = []
+                    bam_alt_pos_from_end = []
+                    bam_ref_flanking_indel = []
+                    bam_alt_flanking_indel = []
+                    
+                    bam_noise_read_count = bam_poor_read_count  = 0
+                    
+                    for read_i in bam_reads:
+                        if not read_i.is_unmapped and dedup_test(read_i):
+                            
+                            bam_dp += 1
+                            
+                            code_i, ith_base, base_call_i, indel_length_i, flanking_indel_i = position_of_aligned_read(read_i, my_coordinate[1]-1 )
+                            
+                            if read_i.mapping_quality < min_mq and mean(read_i.query_qualities) < min_bq:
+                                bam_poor_read_count += 1
+                            
+                            if read_i.mapping_quality == 0:
+                                bam_MQ0 += 1
+                            
+                            # Reference calls:
+                            if code_i == 1 and base_call_i == ref_base[0]:
+                            
+                                bam_ref_read_mq.append( read_i.mapping_quality )
+                                bam_ref_read_bq.append( read_i.query_qualities[ith_base] )
+                                
+                                try:
+                                    bam_ref_edit_distance.append( read_i.get_tag('NM') )
+                                except KeyError:
+                                    pass
+                                
+                                # Concordance
+                                if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                    bam_ref_concordant_reads += 1
+                                elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                    bam_ref_discordant_reads += 1
+                                
+                                # Orientation
+                                if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                    bam_ref_for += 1
+                                elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                    bam_ref_rev += 1
+                                
+                                # Soft-clipped reads?
+                                if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
+                                    bam_ref_SC_reads += 1
+                                else:
+                                    bam_ref_notSC_reads += 1
+    
+                                # Distance from the end of the read:
+                                if ith_base != None:
+                                    bam_ref_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
+                                    
+                                # Flanking indels:
+                                bam_ref_flanking_indel.append( flanking_indel_i )
+    
+                            
+                            # Alternate calls:
+                            # SNV, or Deletion, or Insertion where I do not check for matching indel length
+                            elif (indel_length == 0 and code_i == 1 and base_call_i == first_alt) or \
+                                 (indel_length < 0  and code_i == 2 and indel_length == indel_length_i) or \
+                                 (indel_length > 0  and code_i == 3):
+                                
+                                bam_alt_read_mq.append( read_i.mapping_quality )
+                                bam_alt_read_bq.append( read_i.query_qualities[ith_base] )
+                                
+                                try:
+                                    bam_alt_edit_distance.append( read_i.get_tag('NM') )
+                                except KeyError:
+                                    pass
+                                
+                                # Concordance
+                                if        read_i.is_proper_pair  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                    bam_alt_concordant_reads += 1
+                                elif (not read_i.is_proper_pair) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                    bam_alt_discordant_reads += 1
+                                
+                                # Orientation
+                                if (not read_i.is_reverse) and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                    bam_alt_for += 1
+                                elif    read_i.is_reverse  and read_i.mapping_quality >= min_mq and read_i.query_qualities[ith_base] >= min_bq:
+                                    bam_alt_rev += 1
+                                
+                                # Soft-clipped reads?
+                                if read_i.cigar[0][0] == cigar_soft_clip or read_i.cigar[-1][0] == cigar_soft_clip:
+                                    bam_alt_SC_reads += 1
+                                else:
+                                    bam_alt_notSC_reads += 1
+    
+                                # Distance from the end of the read:
+                                if ith_base != None:
+                                    bam_alt_pos_from_end.append( min(ith_base, read_i.query_length-ith_base) )
+                                                        
+                                # Flanking indels:
+                                bam_alt_flanking_indel.append( flanking_indel_i )
+                            
+                            
+                            # Inconsistent read or 2nd alternate calls:
+                            else:
+                                bam_noise_read_count += 1
+                                    
+                    
+                    # Done extracting info from tumor BAM. Now tally them:
+                    bam_ref_mq        = mean(bam_ref_read_mq)
+                    bam_alt_mq        = mean(bam_alt_read_mq)
+                    bam_z_ranksums_mq = stats.ranksums(bam_alt_read_mq, bam_ref_read_mq)[0]
+                    
+                    bam_ref_bq        = mean(bam_ref_read_bq)
+                    bam_alt_bq        = mean(bam_alt_read_bq)
+                    bam_z_ranksums_bq = stats.ranksums(bam_alt_read_bq, bam_ref_read_bq)[0]
+                    
+                    bam_ref_NM        = mean(bam_ref_edit_distance)
+                    bam_alt_NM        = mean(bam_alt_edit_distance)
+                    
+                    bam_concordance_fet = stats.fisher_exact(( (bam_ref_concordant_reads, bam_alt_concordant_reads), (bam_ref_discordant_reads, bam_alt_discordant_reads) ))[1]
+                    bam_strandbias_fet  = stats.fisher_exact(( (bam_ref_for, bam_alt_for), (bam_ref_rev, bam_alt_rev) ))[1]
+                    bam_clipping_fet    = stats.fisher_exact(( (bam_ref_notSC_reads, bam_alt_notSC_reads), (bam_ref_SC_reads, bam_alt_SC_reads) ))[1]
+                    
+                    bam_z_ranksums_endpos = stats.ranksums(bam_alt_pos_from_end, bam_ref_pos_from_end)[0]
+                    
+                    bam_ref_indel_1bp = bam_ref_flanking_indel.count(1)
+                    bam_ref_indel_2bp = bam_ref_flanking_indel.count(2) + bam_ref_indel_1bp
+                    bam_ref_indel_3bp = bam_ref_flanking_indel.count(3) + bam_ref_indel_2bp + bam_ref_indel_1bp
+                    bam_alt_indel_1bp = bam_alt_flanking_indel.count(1)
+                    bam_alt_indel_2bp = bam_alt_flanking_indel.count(2) + bam_alt_indel_1bp
+                    bam_alt_indel_3bp = bam_alt_flanking_indel.count(3) + bam_alt_indel_2bp + bam_alt_indel_1bp
+        
 
-					bam_DP.append(bam_dp)
-					bam_REF_MQ.append(bam_ref_mq)
-					bam_ALT_MQ.append(bam_alt_mq)
-					bam_Z_Ranksums_MQ.append(bam_z_ranksums_mq)
-					bam_REF_BQ.append(bam_ref_bq)
-					bam_ALT_BQ.append(bam_alt_bq)
-					bam_Z_Ranksums_BQ.append(bam_z_ranksums_bq)
-					bam_REF_NM.append(bam_ref_NM)
-					bam_ALT_NM.append(bam_alt_NM)
-					bam_NM_Diff.append(bam_alt_NM - bam_ref_NM - abs(indel_length))
-					bam_REF_Concordant.append(bam_ref_concordant_reads)
-					bam_REF_Discordant.append(bam_ref_discordant_reads)
-					bam_ALT_Concordant.append(bam_alt_concordant_reads)
-					bam_ALT_Discordant.append(bam_alt_discordant_reads)
-					bam_Concordance_FET.append(bam_concordance_fet)
-					bam_REF_FOR.append(bam_ref_for)
-					bam_REF_REV.append(bam_ref_rev)
-					bam_ALT_FOR.append(bam_alt_for)
-					bam_ALT_REV.append(bam_alt_rev)
-					bam_StrandBias_FET.append(bam_strandbias_fet)
-					bam_Z_Ranksums_EndPos.append(bam_z_ranksums_endpos)
-					bam_REF_Clipped_Reads.append(bam_ref_SC_reads)
-					bam_ALT_Clipped_Reads.append(bam_alt_SC_reads)
-					bam_Clipping_FET.append(bam_clipping_fet)
-					bam_MQ0.append(bam_MQ0)
-					bam_Other_Reads.append(bam_noise_read_count)
-					bam_Poor_Reads.append(bam_poor_read_count)
-					bam_REF_InDel_3bp.append(bam_ref_indel_3bp)
-					bam_REF_InDel_2bp.append(bam_ref_indel_2bp)
-					bam_REF_InDel_1bp.append(bam_ref_indel_1bp)
-					bam_ALT_InDel_3bp.append(bam_alt_indel_3bp)
-					bam_ALT_InDel_2bp.append(bam_alt_indel_2bp)
-					bam_ALT_InDel_1bp.append(bam_alt_indel_1bp)
+                    bam_DP.append(bam_dp)
+                    bam_REF_MQ.append(bam_ref_mq)
+                    bam_ALT_MQ.append(bam_alt_mq)
+                    bam_Z_Ranksums_MQ.append(bam_z_ranksums_mq)
+                    bam_REF_BQ.append(bam_ref_bq)
+                    bam_ALT_BQ.append(bam_alt_bq)
+                    bam_Z_Ranksums_BQ.append(bam_z_ranksums_bq)
+                    bam_REF_NM.append(bam_ref_NM)
+                    bam_ALT_NM.append(bam_alt_NM)
+                    bam_NM_Diff.append(bam_alt_NM - bam_ref_NM - abs(indel_length))
+                    bam_REF_Concordant.append(bam_ref_concordant_reads)
+                    bam_REF_Discordant.append(bam_ref_discordant_reads)
+                    bam_ALT_Concordant.append(bam_alt_concordant_reads)
+                    bam_ALT_Discordant.append(bam_alt_discordant_reads)
+                    bam_Concordance_FET.append(bam_concordance_fet)
+                    bam_REF_FOR.append(bam_ref_for)
+                    bam_REF_REV.append(bam_ref_rev)
+                    bam_ALT_FOR.append(bam_alt_for)
+                    bam_ALT_REV.append(bam_alt_rev)
+                    bam_StrandBias_FET.append(bam_strandbias_fet)
+                    bam_Z_Ranksums_EndPos.append(bam_z_ranksums_endpos)
+                    bam_REF_Clipped_Reads.append(bam_ref_SC_reads)
+                    bam_ALT_Clipped_Reads.append(bam_alt_SC_reads)
+                    bam_Clipping_FET.append(bam_clipping_fet)
+                    bam_MQ0.append(bam_MQ0)
+                    bam_Other_Reads.append(bam_noise_read_count)
+                    bam_Poor_Reads.append(bam_poor_read_count)
+                    bam_REF_InDel_3bp.append(bam_ref_indel_3bp)
+                    bam_REF_InDel_2bp.append(bam_ref_indel_2bp)
+                    bam_REF_InDel_1bp.append(bam_ref_indel_1bp)
+                    bam_ALT_InDel_3bp.append(bam_alt_indel_3bp)
+                    bam_ALT_InDel_2bp.append(bam_alt_indel_2bp)
+                    bam_ALT_InDel_1bp.append(bam_alt_indel_1bp)
 
-	                
-	                # Odds Ratio (just like VarDict, but get from BAM). Calculate if the length of the lists is an even number, i.e., been through a normal-tumor cycle
-	                if len(bam_REF_FOR) % 2 == 0:
-						
-		                sor_numerator   = (bam_ALT_FOR[-2] + bam_ALT_REV[-2]) * (bam_REF_FOR[-1] + bam_REF_REV[-1])
-		                sor_denominator = (bam_REF_FOR[-2] + bam_REF_REV[-2]) * (bam_ALT_FOR[-1] + bam_ALT_REV[-1])
-		                
-		                if sor_numerator == 0 and sor_denominator == 0:
-		                    sor = nan
-		                elif sor_denominator == 0:
-		                    sor = 100
-		                else:
-		                    sor = sor_numerator / sor_denominator
-		                    if sor >= 100:
-		                        sor = 100
-				
-						bam_SOR.append( sor )
+                    
+                    # Odds Ratio (just like VarDict, but get from BAM). Calculate if the length of the lists is an even number, i.e., been through a normal-tumor cycle
+                    if len(bam_REF_FOR) % 2 == 0:
+                        
+                        sor_numerator   = (bam_ALT_FOR[-2] + bam_ALT_REV[-2]) * (bam_REF_FOR[-1] + bam_REF_REV[-1])
+                        sor_denominator = (bam_REF_FOR[-2] + bam_REF_REV[-2]) * (bam_ALT_FOR[-1] + bam_ALT_REV[-1])
+                        
+                        if sor_numerator == 0 and sor_denominator == 0:
+                            sor = nan
+                        elif sor_denominator == 0:
+                            sor = 100
+                        else:
+                            sor = sor_numerator / sor_denominator
+                            if sor >= 100:
+                                sor = 100
+                
+                        bam_SOR.append( sor )
                 
                 ############################################################################################
                 ############################################################################################
