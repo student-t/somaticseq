@@ -65,7 +65,7 @@ chrom_seq = genome.faiordict2contigorder(fai_file, 'fai')
 assert len(nbam_fn) == len(tbam_fn) == len(n_prefix) == len(t_prefix)
 
 paired_prefixes = tuple( zip(n_prefix, t_prefix) )
-paired_bams = tuple( zip(nbam_fn, tbam_fn) )
+paired_bams = tuple( zip(nbam_files, tbam_files) )
 
 # Determine input format:
 if is_vcf:
@@ -108,55 +108,14 @@ pattern_chr_position = genome.pattern_chr_position
 
 
 # Header for the output data, created here so I won't have to indent this line:
-out_header = \
-'CHROM\t\
-POS\t\
-ID\t\
-REF\t\
-ALT\t\
-if_dbsnp\t\
-COMMON\t\
-if_COSMIC\t\
-COSMIC_CNT\t\
-MaxHomopolymer_Length\t\
-SiteHomopolymer_Length\t\
-InDel_Length\t\
-TrueVariant_or_False'
+variant_identities = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'if_dbsnp', 'COMMON', 'if_COSMIC', 'COSMIC_CNT', 'MaxHomopolymer_Length', 'SiteHomopolymer_Length', 'InDel_Length', 'TrueVariant_or_False']
+out_header = '\t'.join( variant_identities )
 
-bam_headers = '{prefix}_DP\t\
-{prefix}_REF_MQ\t\
-{prefix}_ALT_MQ\t\
-{prefix}_Z_Ranksums_MQ\t\
-{prefix}_REF_BQ\t\
-{prefix}_ALT_BQ\t\
-{prefix}_Z_Ranksums_BQ\t\
-{prefix}_REF_NM\t\
-{prefix}_ALT_NM\t\
-{prefix}_NM_Diff\t\
-{prefix}_REF_Concordant\t\
-{prefix}_REF_Discordant\t\
-{prefix}_ALT_Concordant\t\
-{prefix}_ALT_Discordant\t\
-{prefix}_Concordance_FET\t\
-{prefix}_REF_FOR\t\
-{prefix}_REF_REV\t\
-{prefix}_ALT_FOR\t\
-{prefix}_ALT_REV\t\
-{prefix}_StrandBias_FET\t\
-{prefix}_Z_Ranksums_EndPos\t\
-{prefix}_REF_Clipped_Reads\t\
-{prefix}_ALT_Clipped_Reads\t\
-{prefix}_Clipping_FET\t\
-{prefix}_MQ0\t\
-{prefix}_Other_Reads\t\
-{prefix}_Poor_Reads\t\
-{prefix}_REF_InDel_3bp\t\
-{prefix}_REF_InDel_2bp\t\
-{prefix}_REF_InDel_1bp\t\
-{prefix}_ALT_InDel_3bp\t\
-{prefix}_ALT_InDel_2bp\t\
-{prefix}_ALT_InDel_1bp'
+identity_format = '\t'.join( [ '{' + id_i + '}' for id_i in variant_identities] )
 
+
+bam_metrics = ["bam_DP", "bam_REF_MQ", "bam_ALT_MQ", "bam_Z_Ranksums_MQ", "bam_REF_BQ", "bam_ALT_BQ", "bam_Z_Ranksums_BQ", "bam_REF_NM", "bam_ALT_NM", "bam_NM_Diff", "bam_REF_Concordant", "bam_REF_Discordant", "bam_ALT_Concordant", "bam_ALT_Discordant", "bam_Concordance_FET", "bam_REF_FOR", "bam_REF_REV", "bam_ALT_FOR", "bam_ALT_REV", "bam_StrandBias_FET", "bam_Z_Ranksums_EndPos", "bam_REF_Clipped_Reads", "bam_ALT_Clipped_Reads", "bam_Clipping_FET", "bam_MQ0", "bam_Other_Reads", "bam_Poor_Reads", "bam_REF_InDel_3bp", "bam_REF_InDel_2bp", "bam_REF_InDel_1bp", "bam_ALT_InDel_3bp", "bam_ALT_InDel_2bp", "bam_ALT_InDel_1bp"]
+bam_headers = '\t'.join( [ '{prefix}_' + i for i in bam_metrics ] )
 
 ## Running
 with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
@@ -168,12 +127,12 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
     t_files = []
     bam_files = []
     for nbam_i, tbam_i in paired_bams:
-        vars()[nbam] = pysam.AlignmentFile(nbam_i)
-        vars()[tbam] = pysam.AlignmentFile(tbam_i)
-        n_files.append( vars()[nbam] )
-        t_files.append( vars()[tbam] )
-        bam_files.append( vars()[nbam] )
-        bam_files.append( vars()[tbam] )
+        vars()[nbam_i] = pysam.AlignmentFile(nbam_i)
+        vars()[tbam_i] = pysam.AlignmentFile(tbam_i)
+        n_files.append( vars()[nbam_i] )
+        t_files.append( vars()[tbam_i] )
+        bam_files.append( vars()[nbam_i] )
+        bam_files.append( vars()[tbam_i] )
         
     if truth:
         truth = genome.open_textfile(truth)
@@ -199,18 +158,15 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
         my_line = my_sites.readline().rstrip()
         
     for nbam_i, tbam_i in paired_prefixes:
-        out_header = out_header + '\t' + bam_headers.format(prefix=nbam_i) + '\t' + bam_headers.format(prefix=tbam_i) + '\t' + '{}_SOR'.format( '{}_{}'.format(nbam_i, tbam_i))
+        out_header = out_header + '\t' + bam_headers.format(prefix=nbam_i) + '\t' + bam_headers.format(prefix=tbam_i) + '\t' + '{}_SOR'.format( '{}.{}'.format(nbam_i, tbam_i))
     
     # Write out the header
     outhandle.write( out_header  + '\n' )
     
     # Make things '{Feature_1}\t{Feature_2}\t....{Feature_N}'
     features = out_header.split('\t')
-    out_string = ''
-    for feature_i in features:
-        out_string = out_string + '\t{' + feature_i + '}'
-    out_string = out_string.lstrip('\t')
-
+    out_format  = '\t'.join( [ '{' + feature_i + '}' for feature_i in features] )
+    num_columns = len(features)
 
     while my_line:
         
@@ -379,41 +335,12 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 
                 
                 ########################################################################################
-                # BAM file:
-                bam_DP                = []
-                bam_REF_MQ            = []
-                bam_ALT_MQ            = []
-                bam_Z_Ranksums_MQ     = []
-                bam_REF_BQ            = []
-                bam_ALT_BQ            = []
-                bam_Z_Ranksums_BQ     = []
-                bam_REF_NM            = []
-                bam_ALT_NM            = []
-                bam_NM_Diff           = []
-                bam_REF_Concordant    = []
-                bam_REF_Discordant    = []
-                bam_ALT_Concordant    = []
-                bam_ALT_Discordant    = []
-                bam_Concordance_FET   = []
-                bam_REF_FOR           = []
-                bam_REF_REV           = []
-                bam_ALT_FOR           = []
-                bam_ALT_REV           = []
-                bam_StrandBias_FET    = []
-                bam_Z_Ranksums_EndPos = []
-                bam_REF_Clipped_Reads = []
-                bam_ALT_Clipped_Reads = []
-                bam_Clipping_FET      = []
-                bam_MQ0               = []
-                bam_Other_Reads       = []
-                bam_Poor_Reads        = []
-                bam_REF_InDel_3bp     = []
-                bam_REF_InDel_2bp     = []
-                bam_REF_InDel_1bp     = []
-                bam_ALT_InDel_3bp     = []
-                bam_ALT_InDel_2bp     = []
-                bam_ALT_InDel_1bp     = []
-                bam_SOR               = []
+                # BAM file:                
+                for metric_i in bam_metrics:
+                    vars()[ metric_i ] = []
+                    bam_derived_metrics.append( vars()[ metric_i ] )
+   
+                paired_bam_SOR = []
                                             
                 for bam_i in bam_files:
                 
@@ -609,7 +536,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                             if sor >= 100:
                                 sor = 100
                 
-                        bam_SOR.append( sor )
+                        paired_bam_SOR.append( sor )
                 
                 ############################################################################################
                 ############################################################################################
@@ -664,115 +591,23 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 else:
                     my_identifiers = '.'
                     
-                ###
-                out_line = out_header.format( \
-                CHROM                   = my_coordinate[0],                                       \
-                POS                     = my_coordinate[1],                                       \
-                ID                      = my_identifiers,                                         \
-                REF                     = ref_base,                                               \
-                ALT                     = first_alt,                                              \
-                if_MuTect               = mutect_classification,                                  \
-                if_Strelka              = strelka_classification,                                 \
-                if_VarScan2             = varscan_classification,                                 \
-                if_JointSNVMix2         = jointsnvmix2_classification,                            \
-                if_SomaticSniper        = sniper_classification,                                  \
-                if_VarDict              = vardict_classification,                                 \
-                if_LoFreq               = lofreq_classification,                                  \
-                if_Scalpel              = scalpel_classification,                                 \
-                MuSE_Tier               = muse_classification,                                    \
-                Strelka_Score           = somatic_evs,                                            \
-                Strelka_QSS             = qss,                                                    \
-                Strelka_TQSS            = tqss,                                                   \
-                VarScan2_Score          = rescale(score_varscan2,      'phred', p_scale, 1001),   \
-                SNVMix2_Score           = rescale(score_jointsnvmix2,  'phred', p_scale, 1001),   \
-                Sniper_Score            = rescale(score_somaticsniper, 'phred', p_scale, 1001),   \
-                VarDict_Score           = rescale(score_vardict,       'phred', p_scale, 1001),   \
-                if_dbsnp                = if_dbsnp,                                               \
-                COMMON                  = if_common,                                              \
-                if_COSMIC               = if_cosmic,                                              \
-                COSMIC_CNT              = num_cases,                                              \
-                N_DP                    = N_dp,                                                   \
-                nBAM_REF_MQ             = '%g' % n_ref_mq,                                        \
-                nBAM_ALT_MQ             = '%g' % n_alt_mq,                                        \
-                nBAM_Z_Ranksums_MQ      = '%g' % n_z_ranksums_mq,                                 \
-                nBAM_REF_BQ             = '%g' % n_ref_bq,                                        \
-                nBAM_ALT_BQ             = '%g' % n_alt_bq,                                        \
-                nBAM_Z_Ranksums_BQ      = '%g' % n_z_ranksums_bq,                                 \
-                nBAM_REF_NM             = '%g' % n_ref_NM,                                        \
-                nBAM_ALT_NM             = '%g' % n_alt_NM,                                        \
-                nBAM_NM_Diff            = '%g' % n_NM_Diff,                                       \
-                nBAM_REF_Concordant     = n_ref_concordant_reads,                                 \
-                nBAM_REF_Discordant     = n_ref_discordant_reads,                                 \
-                nBAM_ALT_Concordant     = n_alt_concordant_reads,                                 \
-                nBAM_ALT_Discordant     = n_alt_discordant_reads,                                 \
-                nBAM_Concordance_FET    = rescale(n_concordance_fet, 'fraction', p_scale, 1001),  \
-                N_REF_FOR               = n_ref_for,                                              \
-                N_REF_REV               = n_ref_rev,                                              \
-                N_ALT_FOR               = n_alt_for,                                              \
-                N_ALT_REV               = n_alt_rev,                                              \
-                nBAM_StrandBias_FET     = rescale(n_strandbias_fet, 'fraction', p_scale, 1001),   \
-                nBAM_Z_Ranksums_EndPos  = '%g' % n_z_ranksums_endpos,                             \
-                nBAM_REF_Clipped_Reads  = n_ref_SC_reads,                                         \
-                nBAM_ALT_Clipped_Reads  = n_alt_SC_reads,                                         \
-                nBAM_Clipping_FET       = rescale(n_clipping_fet, 'fraction', p_scale, 1001),     \
-                nBAM_MQ0                = n_MQ0,                                                  \
-                nBAM_Other_Reads        = n_noise_read_count,                                     \
-                nBAM_Poor_Reads         = n_poor_read_count,                                      \
-                nBAM_REF_InDel_3bp      = n_ref_indel_3bp,                                        \
-                nBAM_REF_InDel_2bp      = n_ref_indel_2bp,                                        \
-                nBAM_REF_InDel_1bp      = n_ref_indel_1bp,                                        \
-                nBAM_ALT_InDel_3bp      = n_alt_indel_3bp,                                        \
-                nBAM_ALT_InDel_2bp      = n_alt_indel_2bp,                                        \
-                nBAM_ALT_InDel_1bp      = n_alt_indel_1bp,                                        \
-                M2_RPA                  = rpa,                                                    \
-                M2_NLOD                 = nlod,                                                   \
-                M2_TLOD                 = tlod,                                                   \
-                M2_STR                  = tandem,                                                 \
-                M2_ECNT                 = ecnt,                                                   \
-                M2_HCNT                 = hcnt,                                                   \
-                M2_MAXED                = maxED,                                                  \
-                M2_MINED                = minED,                                                  \
-                SOR                     = sor,                                                    \
-                MSI                     = msi,                                                    \
-                MSILEN                  = msilen,                                                 \
-                SHIFT3                  = shift3,                                                 \
-                MaxHomopolymer_Length   = homopolymer_length,                                     \
-                SiteHomopolymer_Length  = site_homopolymer_length,                                \
-                T_DP                    = T_dp,                                                   \
-                tBAM_REF_MQ             = '%g' % t_ref_mq,                                        \
-                tBAM_ALT_MQ             = '%g' % t_alt_mq,                                        \
-                tBAM_Z_Ranksums_MQ      = '%g' % t_z_ranksums_mq,                                 \
-                tBAM_REF_BQ             = '%g' % t_ref_bq,                                        \
-                tBAM_ALT_BQ             = '%g' % t_alt_bq,                                        \
-                tBAM_Z_Ranksums_BQ      = '%g' % t_z_ranksums_bq,                                 \
-                tBAM_REF_NM             = '%g' % t_ref_NM,                                        \
-                tBAM_ALT_NM             = '%g' % t_alt_NM,                                        \
-                tBAM_NM_Diff            = '%g' % t_NM_Diff,                                       \
-                tBAM_REF_Concordant     = t_ref_concordant_reads,                                 \
-                tBAM_REF_Discordant     = t_ref_discordant_reads,                                 \
-                tBAM_ALT_Concordant     = t_alt_concordant_reads,                                 \
-                tBAM_ALT_Discordant     = t_alt_discordant_reads,                                 \
-                tBAM_Concordance_FET    = rescale(t_concordance_fet, 'fraction', p_scale, 1001),  \
-                T_REF_FOR               = t_ref_for,                                              \
-                T_REF_REV               = t_ref_rev,                                              \
-                T_ALT_FOR               = t_alt_for,                                              \
-                T_ALT_REV               = t_alt_rev,                                              \
-                tBAM_StrandBias_FET     = rescale(t_strandbias_fet, 'fraction', p_scale, 1001),   \
-                tBAM_Z_Ranksums_EndPos  = '%g' % t_z_ranksums_endpos,                             \
-                tBAM_REF_Clipped_Reads  = t_ref_SC_reads,                                         \
-                tBAM_ALT_Clipped_Reads  = t_alt_SC_reads,                                         \
-                tBAM_Clipping_FET       = rescale(t_clipping_fet, 'fraction', p_scale, 1001),     \
-                tBAM_MQ0                = t_MQ0,                                                  \
-                tBAM_Other_Reads        = t_noise_read_count,                                     \
-                tBAM_Poor_Reads         = t_poor_read_count,                                      \
-                tBAM_REF_InDel_3bp      = t_ref_indel_3bp,                                        \
-                tBAM_REF_InDel_2bp      = t_ref_indel_2bp,                                        \
-                tBAM_REF_InDel_1bp      = t_ref_indel_1bp,                                        \
-                tBAM_ALT_InDel_3bp      = t_alt_indel_3bp,                                        \
-                tBAM_ALT_InDel_2bp      = t_alt_indel_2bp,                                        \
-                tBAM_ALT_InDel_1bp      = t_alt_indel_1bp,                                        \
-                InDel_Length            = indel_length,                                           \
-                TrueVariant_or_False    = judgement )
+                ### Partial output line for all information associated with a variant
+                out_line = identity_format.format(CHROM = my_coordinate[0], POS = my_coordinate[1], ID = my_identifiers, REF = ref_base, ALT = first_alt, if_dbsnp = if_dbsnp, COMMON = if_common, if_COSMIC = if_cosmic, COSMIC_CNT = num_cases, MaxHomopolymer_Length = homopolymer_length, SiteHomopolymer_Length = site_homopolymer_length, InDel_Length = indel_length, TrueVariant_or_False = judgement )
+                
+                ### All the information extracted from BAM files
+                bam_metrics_line = []
+                for i, bam_i in enumerate(bam_files):
+                    
+                    for metric_i in bam_derived_metrics:
+                        bam_metrics_line.append( metric_i[ i ] )
+                        
+                    if i % 2 == 1:
+                        sor_i = int((i-1)/2)
+                        bam_metrics_line.append( paired_bam_SOR[sor_i] )
+                    
+                # Combine:
+                out_line = out_line + '\t' + '\t'.join( bam_metrics_line )
+                assert len( out_line.split('\t') ) == num_columns
                 
                 # Print it out to stdout:
                 outhandle.write(out_line + '\n')
@@ -782,5 +617,5 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
             my_line = my_sites.readline().rstrip()
         
     ##########  Close all open files if they were opened  ##########
-    opened_files = (ref_fa, nbam, tbam, truth, cosmic, dbsnp)
-    [opened_file.close() for opened_file in opened_files if opened_file]
+    [ opened_file.close() for opened_file in (ref_fa, truth, cosmic, dbsnp) if opened_file ]
+    [ bam_i.close() for bam_i in bam_files ]
