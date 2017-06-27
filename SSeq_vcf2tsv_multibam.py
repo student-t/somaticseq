@@ -354,7 +354,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     bam_ref_concordant_reads = bam_alt_concordant_reads = bam_ref_discordant_reads = bam_alt_discordant_reads = 0
                     bam_ref_for = bam_ref_rev = bam_alt_for = bam_alt_rev = bam_dp = 0
                     bam_ref_SC_reads = bam_alt_SC_reads = bam_ref_notSC_reads = bam_alt_notSC_reads = 0
-                    bam_MQ0 = 0
+                    total_MQ0 = 0
                     
                     bam_ref_pos_from_end = []
                     bam_alt_pos_from_end = []
@@ -374,7 +374,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                                 bam_poor_read_count += 1
                             
                             if read_i.mapping_quality == 0:
-                                bam_MQ0 += 1
+                                total_MQ0 += 1
                             
                             # Reference calls:
                             if code_i == 1 and base_call_i == ref_base[0]:
@@ -508,7 +508,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     bam_REF_Clipped_Reads.append(bam_ref_SC_reads)
                     bam_ALT_Clipped_Reads.append(bam_alt_SC_reads)
                     bam_Clipping_FET.append(bam_clipping_fet)
-                    bam_MQ0.append(bam_MQ0)
+                    bam_MQ0.append(total_MQ0)
                     bam_Other_Reads.append(bam_noise_read_count)
                     bam_Poor_Reads.append(bam_poor_read_count)
                     bam_REF_InDel_3bp.append(bam_ref_indel_3bp)
