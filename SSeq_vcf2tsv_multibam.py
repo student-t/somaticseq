@@ -15,8 +15,8 @@ input_sites.add_argument('-myvcf',  '--vcf-format',           type=str,   help='
 input_sites.add_argument('-mybed',  '--bed-format',           type=str,   help='Input file is BED formatted.', required=False, default=None)
 input_sites.add_argument('-mypos',  '--positions-list',       type=str,   help='A list of positions: tab seperating contig and positions.', required=False, default=None)
 
-parser.add_argument('-nprefix', '--tumor-prefixes',   nargs='*', type=str,   help='normal prefixes',  required=True, default=None)
-parser.add_argument('-tprefix', '--normal-prefixes',  nargs='*', type=str,   help='tumor prefixes',   required=True, default=None)
+parser.add_argument('-nprefix', '--normal-prefixes',   nargs='*', type=str,   help='normal prefixes',  required=True, default=None)
+parser.add_argument('-tprefix', '--tumor-prefixes',  nargs='*', type=str,   help='tumor prefixes',   required=True, default=None)
 parser.add_argument('-nbams',   '--normal-bam-files', nargs='*', type=str,   help='Normal BAM Files', required=True, default=None)
 parser.add_argument('-tbams',   '--tumor-bam-files',  nargs='*', type=str,   help='Tumor BAM Files',  required=True, default=None)
 
@@ -150,8 +150,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
         dbsnp_line = dbsnp.readline().rstrip()
         while dbsnp_line.startswith('#'):
             dbsnp_line = dbsnp.readline().rstrip()
-    
-    
+        
     # Get through all the headers:
     while my_line.startswith('#') or my_line.startswith('track='):
         my_line = my_sites.readline().rstrip()
