@@ -332,7 +332,8 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 
                 
                 ########################################################################################
-                # BAM file:                
+                # BAM file:
+                bam_derived_metrics = []
                 for metric_i in bam_metrics:
                     vars()[ metric_i ] = []
                     bam_derived_metrics.append( vars()[ metric_i ] )
