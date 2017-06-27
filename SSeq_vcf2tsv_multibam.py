@@ -604,6 +604,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                         bam_metrics_line.append( paired_bam_SOR[sor_i] )
                     
                 # Combine:
+                bam_metrics_line = ['{}'.format(i) for i in bam_metrics_line]
                 out_line = out_line + '\t' + '\t'.join( bam_metrics_line )
                 assert len( out_line.split('\t') ) == num_columns
                 
