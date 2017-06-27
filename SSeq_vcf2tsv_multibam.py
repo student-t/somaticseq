@@ -61,7 +61,7 @@ outfile   = args.output_tsv_file
 fai_file  = ref_fa + '.fai'
 chrom_seq = genome.faiordict2contigorder(fai_file, 'fai')
 
-assert len(nbam_fn) == len(tbam_fn) == len(n_prefix) == len(t_prefix)
+assert len(nbam_files) == len(tbam_files) == len(n_prefix) == len(t_prefix)
 
 paired_prefixes = tuple( zip(n_prefix, t_prefix) )
 paired_bams = tuple( zip(nbam_files, tbam_files) )
