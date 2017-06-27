@@ -29,7 +29,6 @@ parser.add_argument('-dedup',   '--deduplicate',     action='store_true', help='
 
 parser.add_argument('-minMQ',     '--minimum-mapping-quality',type=float, help='Minimum mapping quality below which is considered poor', required=False, default=1)
 parser.add_argument('-minBQ',     '--minimum-base-quality',   type=float, help='Minimum base quality below which is considered poor', required=False, default=5)
-parser.add_argument('-mincaller', '--minimum-num-callers',    type=float, help='Minimum number of tools to be considered', required=False, default=0)
 
 parser.add_argument('-scale',      '--p-scale',               type=str,   help='phred, fraction, or none', required=False, default=None)
 parser.add_argument('-outfile',    '--output-tsv-file',       type=str,   help='Output TSV Name', required=False, default=os.sys.stdout)
@@ -256,8 +255,6 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 # Could be re-written if dbSNP/COSMIC are supplied. If not, they will remain NaN.
                 if_dbsnp = if_cosmic = if_common = num_cases = nan
 
-            # Keep track of NumCallers:
-            num_callers = 0
             
             #################################### Find the same coordinate in those VCF files ####################################
             if args.ground_truth_vcf: got_truth,   truth_variants,   truth_line   = genome.find_vcf_at_coordinate(my_coordinate, truth_line,   truth,   chrom_seq)
