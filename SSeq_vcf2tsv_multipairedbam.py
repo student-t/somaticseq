@@ -174,7 +174,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
             out_vcf_headers = []
             out_sample_indices = []
             for n, sample_i in enumerate(vcf_samples):
-                if inclusion_string in vcf_samples:
+                if inclusion_string in sample_i:
                     out_sample_indices.append( n )
                     out_vcf_headers.append( '{}_SCORE'.format( sample_i ) )
                     out_vcf_headers.append( '{}_numTools'.format( sample_i ) )
