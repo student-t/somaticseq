@@ -17,8 +17,8 @@ input_sites.add_argument('-myvcf',  '--vcf-format',           type=str,   help='
 input_sites.add_argument('-mybed',  '--bed-format',           type=str,   help='Input file is BED formatted.', required=False, default=None)
 input_sites.add_argument('-mypos',  '--positions-list',       type=str,   help='A list of positions: tab seperating contig and positions.', required=False, default=None)
 
-parser.add_argument('-include', '--inclusion-string',              type=str,   help='VCF sample names include this to be included',  required=False, default='')
-parser.add_argument('-callers', '--callers-classification-string', type=str,   help='MVJSD or whatever',  required=False, default='MVSDUP')
+parser.add_argument('-inclusion', '--inclusion-string',              type=str,   help='VCF sample names include this to be included',  required=False, default='')
+parser.add_argument('-callers',   '--callers-classification-string', type=str,   help='MVJSD or whatever',  required=False, default='MVSDUP')
 
 parser.add_argument('-nprefix', '--normal-prefixes',  nargs='*', type=str,   help='normal prefixes',  required=True, default=None)
 parser.add_argument('-tprefix', '--tumor-prefixes',   nargs='*', type=str,   help='tumor prefixes',   required=True, default=None)
@@ -167,6 +167,9 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
             vcf_header = my_line.split('\t')
             _, _, _, _, _, _, _, _, _, *vcf_samples = vcf_header
             
+            print(vcf_samples)
+            print(inclusion_string)
+            
             # Extra headers out of the combined VCF file:
             out_vcf_headers = []
             out_sample_indices = []
@@ -183,7 +186,6 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
         my_line = my_sites.readline().rstrip()
         
     # Add the VCF sample stuff to out_header:
-    print(out_vcf_headers)
     out_header = out_header + '\t' + '\t'.join(out_vcf_headers)
     
     for nbam_i, tbam_i in paired_prefixes:
