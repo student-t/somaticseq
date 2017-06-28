@@ -279,9 +279,19 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     vcfNumTool = []
                     vcfCaller  = []
                     for i in out_sample_indices:
-                        vcfSCORE.append(   variant_i.get_sample_value('SCORE',        i) )
-                        vcfNumTool.append( variant_i.get_sample_value('NUM_TOOLS',    i) )
-                        vcfCaller.append(  variant_i.get_sample_value(callers_string, i) )
+                        
+                        score_i = variant_i.get_sample_value('SCORE', i)
+                        if score_i == None: score_i = nan
+                        
+                        numtools_i = variant_i.get_sample_value('NUM_TOOLS', i)
+                        if numtools_i == None: numtools_i = nan
+                        
+                        callers_i = variant_i.get_sample_value(callers_string, i)
+                        if callers_i == None: callers_i = '.'
+                        
+                        vcfSCORE.append( score_i )
+                        vcfNumTool.append( vcfNumTool )
+                        vcfCaller.append( vcfCaller )
                     
                     if variant_i.identifier == '.':
                         my_identifier_i = set()
