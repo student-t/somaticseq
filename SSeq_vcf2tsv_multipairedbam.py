@@ -281,10 +281,10 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     for i in out_sample_indices:
                         
                         score_i = variant_i.get_sample_value('SCORE', i)
-                        if score_i == None: score_i = nan
+                        if score_i == None: score_i = 'nan'
                         
                         numtools_i = variant_i.get_sample_value('NUM_TOOLS', i)
-                        if numtools_i == None: numtools_i = nan
+                        if numtools_i == None: numtools_i = 'nan'
                         
                         callers_i = variant_i.get_sample_value(callers_string, i)
                         if callers_i == None: callers_i = '.'
