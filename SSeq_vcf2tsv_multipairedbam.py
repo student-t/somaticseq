@@ -655,9 +655,12 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 ### 3 metrics for each sample in the input VCF file:
                 vcf_metrics_items = []
                 for score_i, numtool_i, callers_i in zip(my_SCORES, my_numTools, my_Callers):
+                    
+                    print(score_i, numtool_i, callers_i)
                     vcf_metrics_items.append(score_i)
                     vcf_metrics_items.append(numtool_i)
                     vcf_metrics_items.append(callers_i)
+                    
                 vcf_metrics_line = '\t'.join(vcf_metrics_items)
                 
                 ### All the information extracted from BAM files
