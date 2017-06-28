@@ -178,10 +178,12 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     out_vcf_headers.append( '{}_callerClassification'.format( sample_i ) )
             
             num_vcf_samples = len(vcf_samples)
+            print(out_vcf_headers)
         
         my_line = my_sites.readline().rstrip()
         
     # Add the VCF sample stuff to out_header:
+    print(out_vcf_headers)
     out_header = out_header + '\t' + '\t'.join(out_vcf_headers)
     
     for nbam_i, tbam_i in paired_prefixes:
