@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Special script written for SEQC2's multiple institution multiple replicate sequencing.
+
 import sys, argparse, math, gzip, os, pysam
 import regex as re
 import scipy.stats as stats
@@ -15,8 +17,8 @@ input_sites.add_argument('-myvcf',  '--vcf-format',           type=str,   help='
 input_sites.add_argument('-mybed',  '--bed-format',           type=str,   help='Input file is BED formatted.', required=False, default=None)
 input_sites.add_argument('-mypos',  '--positions-list',       type=str,   help='A list of positions: tab seperating contig and positions.', required=False, default=None)
 
-parser.add_argument('-nprefix', '--normal-prefixes',   nargs='*', type=str,   help='normal prefixes',  required=True, default=None)
-parser.add_argument('-tprefix', '--tumor-prefixes',  nargs='*', type=str,   help='tumor prefixes',   required=True, default=None)
+parser.add_argument('-nprefix', '--normal-prefixes',  nargs='*', type=str,   help='normal prefixes',  required=True, default=None)
+parser.add_argument('-tprefix', '--tumor-prefixes',   nargs='*', type=str,   help='tumor prefixes',   required=True, default=None)
 parser.add_argument('-nbams',   '--normal-bam-files', nargs='*', type=str,   help='Normal BAM Files', required=True, default=None)
 parser.add_argument('-tbams',   '--tumor-bam-files',  nargs='*', type=str,   help='Tumor BAM Files',  required=True, default=None)
 
@@ -153,6 +155,13 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
         
     # Get through all the headers:
     while my_line.startswith('#') or my_line.startswith('track='):
+        
+        # If it's VCF file, get the sample names:
+        if my_line.startswith('#CHROM'):
+            vcf_header = my_line.split('\t')
+            _, _, _, _, _, _, _, _, _, *vcf_samples = vcf_header
+            num_vcf_samples = len(vcf_samples)
+        
         my_line = my_sites.readline().rstrip()
         
     for nbam_i, tbam_i in paired_prefixes:
