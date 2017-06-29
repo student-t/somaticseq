@@ -123,16 +123,8 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
     my_line = my_sites.readline().rstrip()
     ref_fa  = pysam.FastaFile(ref_fa)
     
-    n_files = []
-    t_files = []
-    bam_files = []
-    for nbam_i, tbam_i in paired_bams:
-        vars()[nbam_i] = pysam.AlignmentFile(nbam_i)
-        vars()[tbam_i] = pysam.AlignmentFile(tbam_i)
-        n_files.append( vars()[nbam_i] )
-        t_files.append( vars()[tbam_i] )
-        bam_files.append( vars()[nbam_i] )
-        bam_files.append( vars()[tbam_i] )
+    for bam_i in bam_files:
+        vars()[bam_i] = pysam.AlignmentFile(bam_i)
         
     if truth:
         truth = genome.open_textfile(truth)
