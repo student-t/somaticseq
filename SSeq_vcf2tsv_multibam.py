@@ -48,7 +48,7 @@ inclusion_string = args.inclusion_string
 callers_string   = args.callers_classification_string
 
 bam_files = args.bam_files
-prefixes  = args.prefixes
+prefixes  = args.sample_prefixes
 
 truth     = args.ground_truth_vcf
 cosmic    = args.cosmic_vcf
