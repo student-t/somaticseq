@@ -123,8 +123,10 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
     my_line = my_sites.readline().rstrip()
     ref_fa  = pysam.FastaFile(ref_fa)
     
+    opened_bam_files = []
     for bam_i in bam_files:
         vars()[bam_i] = pysam.AlignmentFile(bam_i)
+        opened_bam_files.append( vars()[bam_i] )
         
     if truth:
         truth = genome.open_textfile(truth)
@@ -383,7 +385,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     vars()[ metric_i ] = []
                     bam_derived_metrics.append( vars()[ metric_i ] )
                                                
-                for bam_i in bam_files:
+                for bam_i in opened_bam_files:
                 
                     bam_reads = bam_i.fetch( my_coordinate[0], my_coordinate[1]-1, my_coordinate[1] )
                     
@@ -630,7 +632,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 
                 ### All the information extracted from BAM files
                 bam_metrics_line = []
-                for i, bam_i in enumerate(bam_files):
+                for i, bam_i in enumerate(opened_bam_files):
                     
                     for metric_i in bam_derived_metrics:
                         bam_metrics_line.append( metric_i[ i ] )
@@ -656,4 +658,4 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
         
     ##########  Close all open files if they were opened  ##########
     [ opened_file.close() for opened_file in (ref_fa, truth, cosmic, dbsnp) if opened_file ]
-    [ bam_i.close() for bam_i in bam_files ]
+    [ bam_i.close() for bam_i in opened_bam_files ]
