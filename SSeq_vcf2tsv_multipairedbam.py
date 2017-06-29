@@ -290,8 +290,8 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                         if callers_i == None: callers_i = '.'
                         
                         vcfSCORE.append( score_i )
-                        vcfNumTool.append( vcfNumTool )
-                        vcfCaller.append( vcfCaller )
+                        vcfNumTool.append( numtools_i )
+                        vcfCaller.append( callers_i )
                     
                     if variant_i.identifier == '.':
                         my_identifier_i = set()
@@ -656,7 +656,6 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 vcf_metrics_items = []
                 for score_i, numtool_i, callers_i in zip(my_SCORES, my_numTools, my_Callers):
                     
-                    print(score_i, numtool_i, callers_i)
                     vcf_metrics_items.append(score_i)
                     vcf_metrics_items.append(numtool_i)
                     vcf_metrics_items.append(callers_i)
