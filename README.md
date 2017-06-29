@@ -7,6 +7,8 @@
   [![SomaticSeq Video](SomaticSeqYoutube.png)](https://www.youtube.com/watch?v=MnJdTQWWN6w "SomaticSeq Video")
 
 * This is the specialized branch designed to consolidate multiple sequencing replicates of the same samples 
- * SSeq_tsv2vcf.py is modified to move almost all information to the sample columns. Thus, when they are merged using GATK CombineVariants, those information will be retained in the sample columns of the VCF files.
- * SSeq_vcf2tsv_multibam.py handles many BAM files. It will also extract sample-specific information from the VCF files produced above. 
+
+   SSeq_tsv2vcf.py is modified to move almost all information to the sample columns. Thus, when they are merged using GATK CombineVariants, those information will be retained in the sample columns of the VCF files.
+
+   SSeq_vcf2tsv_multibam.py handles many BAM files. It will also extract sample-specific information from the VCF files produced above. 
 
