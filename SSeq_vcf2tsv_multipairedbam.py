@@ -166,10 +166,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
         if my_line.startswith('#CHROM'):
             vcf_header = my_line.split('\t')
             _, _, _, _, _, _, _, _, _, *vcf_samples = vcf_header
-            
-            print(vcf_samples)
-            print(inclusion_string)
-            
+                        
             # Extra headers out of the combined VCF file:
             out_vcf_headers = []
             out_sample_indices = []
@@ -181,7 +178,6 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     out_vcf_headers.append( '{}_callerClassification'.format( sample_i ) )
             
             num_vcf_samples = len(vcf_samples)
-            print(out_vcf_headers)
         
         my_line = my_sites.readline().rstrip()
         
