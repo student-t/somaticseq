@@ -17,10 +17,11 @@ input_sites.add_argument('-myvcf',  '--vcf-format',           type=str,   help='
 input_sites.add_argument('-mybed',  '--bed-format',           type=str,   help='Input file is BED formatted.', required=False, default=None)
 input_sites.add_argument('-mypos',  '--positions-list',       type=str,   help='A list of positions: tab seperating contig and positions.', required=False, default=None)
 
-parser.add_argument('-nprefix', '--normal-prefixes',  nargs='*', type=str,   help='normal prefixes',  required=True, default=None)
-parser.add_argument('-tprefix', '--tumor-prefixes',   nargs='*', type=str,   help='tumor prefixes',   required=True, default=None)
-parser.add_argument('-nbams',   '--normal-bam-files', nargs='*', type=str,   help='Normal BAM Files', required=True, default=None)
-parser.add_argument('-tbams',   '--tumor-bam-files',  nargs='*', type=str,   help='Tumor BAM Files',  required=True, default=None)
+parser.add_argument('-inclusion', '--inclusion-string',              type=str,   help='VCF sample names include this to be included',  required=False, default='')
+parser.add_argument('-callers',   '--callers-classification-string', type=str,   help='MVJSD or whatever',  required=False, default='MVSDUP')
+
+parser.add_argument('-prefix', '--sample-prefixes',  nargs='*', type=str,   help='normal prefixes',  required=True, default=None)
+parser.add_argument('-bams',   '--bam-files', nargs='*', type=str,   help='Normal BAM Files', required=True, default=None)
 
 parser.add_argument('-truth',     '--ground-truth-vcf',       type=str,   help='VCF of true hits',  required=False, default=None)
 parser.add_argument('-dbsnp',     '--dbsnp-vcf',              type=str,   help='dbSNP VCF: do not use if input VCF is annotated', required=False, default=None)
@@ -43,10 +44,11 @@ is_vcf    = args.vcf_format
 is_bed    = args.bed_format
 is_pos    = args.positions_list
 
-nbam_files = args.normal_bam_files
-tbam_files = args.tumor_bam_files
-n_prefix   = args.normal_prefixes
-t_prefix   = args.tumor_prefixes
+inclusion_string = args.inclusion_string
+callers_string   = args.callers_classification_string
+
+bam_files = args.bam_files
+prefixes  = args.prefixes
 
 truth     = args.ground_truth_vcf
 cosmic    = args.cosmic_vcf
@@ -63,10 +65,7 @@ outfile   = args.output_tsv_file
 fai_file  = ref_fa + '.fai'
 chrom_seq = genome.faiordict2contigorder(fai_file, 'fai')
 
-assert len(nbam_files) == len(tbam_files) == len(n_prefix) == len(t_prefix)
-
-paired_prefixes = tuple( zip(n_prefix, t_prefix) )
-paired_bams = tuple( zip(nbam_files, tbam_files) )
+assert len(bam_files) == len(prefix)
 
 # Determine input format:
 if is_vcf:
@@ -160,12 +159,30 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
         if my_line.startswith('#CHROM'):
             vcf_header = my_line.split('\t')
             _, _, _, _, _, _, _, _, _, *vcf_samples = vcf_header
+            
+            print(vcf_samples)
+            print(inclusion_string)
+            
+            # Extra headers out of the combined VCF file:
+            out_vcf_headers = []
+            out_sample_indices = []
+            for n, sample_i in enumerate(vcf_samples):
+                if inclusion_string in sample_i:
+                    out_sample_indices.append( n )
+                    out_vcf_headers.append( '{}_SCORE'.format( sample_i ) )
+                    out_vcf_headers.append( '{}_numTools'.format( sample_i ) )
+                    out_vcf_headers.append( '{}_callerClassification'.format( sample_i ) )
+            
             num_vcf_samples = len(vcf_samples)
+            print(out_vcf_headers)
         
         my_line = my_sites.readline().rstrip()
         
-    for nbam_i, tbam_i in paired_prefixes:
-        out_header = out_header + '\t' + bam_headers.format(prefix=nbam_i) + '\t' + bam_headers.format(prefix=tbam_i) + '\t' + '{}_SOR'.format( '{}.{}'.format(nbam_i, tbam_i))
+    # Add the VCF sample stuff to out_header:
+    out_header = out_header + '\t' + '\t'.join(out_vcf_headers)
+    
+    for bam_i in prefixes:
+        out_header = out_header + '\t' + bam_headers.format(prefix=bam_i)
     
     # Write out the header
     outhandle.write( out_header  + '\n' )
@@ -230,6 +247,10 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 indel_lengths = []
                 all_my_identifiers = []
                 
+                all_SCORES   = []
+                all_numTools = []
+                all_Callers  = []
+                
                 for variant_i in variants_at_my_coordinate:
 
                     ref_base = variant_i.refbase
@@ -246,6 +267,25 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     if_common = 1 if variant_i.get_info_value('COMMON') == '1' else 0
                     num_cases = variant_i.get_info_value('CNT') if variant_i.get_info_value('CNT') else nan
                     
+                    # Extract sample info, i.e., SCORE, NUM_TOOLS, and MVJSD (or whatever)
+                    vcfSCORE   = []
+                    vcfNumTool = []
+                    vcfCaller  = []
+                    for i in out_sample_indices:
+                        
+                        score_i = variant_i.get_sample_value('SCORE', i)
+                        if score_i == None: score_i = 'nan'
+                        
+                        numtools_i = variant_i.get_sample_value('NUM_TOOLS', i)
+                        if numtools_i == None: numtools_i = 'nan'
+                        
+                        callers_i = variant_i.get_sample_value(callers_string, i)
+                        if callers_i == None: callers_i = '.'
+                        
+                        vcfSCORE.append( score_i )
+                        vcfNumTool.append( numtools_i )
+                        vcfCaller.append( callers_i )
+                    
                     if variant_i.identifier == '.':
                         my_identifier_i = set()
                     else:
@@ -253,6 +293,9 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                         my_identifier_i = set( my_identifier_i )
                     
                     all_my_identifiers.append( my_identifier_i )
+                    all_SCORES.append(   vcfSCORE   )
+                    all_numTools.append( vcfNumTool )
+                    all_Callers.append(  vcfCaller  )
                                 
             ## If not, 1) get ref_base, first_alt from other VCF files. 
             #          2) Create placeholders for dbSNP and COSMIC that can be overwritten with dbSNP/COSMIC VCF files (if provided)
@@ -281,7 +324,9 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     first_alt      = alt_bases[ith_call]
                     indel_length   = indel_lengths[ith_call]
                     my_identifiers = all_my_identifiers[ith_call]
-                    
+                    my_SCORES      = all_SCORES[ith_call]
+                    my_numTools    = all_numTools[ith_call]
+                    my_Callers     = all_Callers[ith_call]
                 else:
                     variant_id = ( (my_coordinate[0], my_coordinate[1]), ref_base, first_alt )
 
@@ -345,9 +390,7 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 for metric_i in bam_metrics:
                     vars()[ metric_i ] = []
                     bam_derived_metrics.append( vars()[ metric_i ] )
-   
-                paired_bam_SOR = []
-                                            
+                                               
                 for bam_i in bam_files:
                 
                     bam_reads = bam_i.fetch( my_coordinate[0], my_coordinate[1]-1, my_coordinate[1] )
@@ -527,23 +570,6 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     bam_ALT_InDel_1bp.append(bam_alt_indel_1bp)
 
                     
-                    # Odds Ratio (just like VarDict, but get from BAM). Calculate if the length of the lists is an even number, i.e., been through a normal-tumor cycle
-                    if len(bam_REF_FOR) % 2 == 0:
-                        
-                        sor_numerator   = (bam_ALT_FOR[-2] + bam_ALT_REV[-2]) * (bam_REF_FOR[-1] + bam_REF_REV[-1])
-                        sor_denominator = (bam_REF_FOR[-2] + bam_REF_REV[-2]) * (bam_ALT_FOR[-1] + bam_ALT_REV[-1])
-                        
-                        if sor_numerator == 0 and sor_denominator == 0:
-                            sor = nan
-                        elif sor_denominator == 0:
-                            sor = 100
-                        else:
-                            sor = sor_numerator / sor_denominator
-                            if sor >= 100:
-                                sor = 100
-                
-                        paired_bam_SOR.append( sor )
-                
                 ############################################################################################
                 ############################################################################################
                 # Homopolymer eval (Make sure to modify for INDEL):
@@ -600,6 +626,16 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 ### Partial output line for all information associated with a variant
                 out_line = identity_format.format(CHROM = my_coordinate[0], POS = my_coordinate[1], ID = my_identifiers, REF = ref_base, ALT = first_alt, if_dbsnp = if_dbsnp, COMMON = if_common, if_COSMIC = if_cosmic, COSMIC_CNT = num_cases, MaxHomopolymer_Length = homopolymer_length, SiteHomopolymer_Length = site_homopolymer_length, InDel_Length = indel_length, TrueVariant_or_False = judgement )
                 
+                ### 3 metrics for each sample in the input VCF file:
+                vcf_metrics_items = []
+                for score_i, numtool_i, callers_i in zip(my_SCORES, my_numTools, my_Callers):
+                    
+                    vcf_metrics_items.append(score_i)
+                    vcf_metrics_items.append(numtool_i)
+                    vcf_metrics_items.append(callers_i)
+                    
+                vcf_metrics_line = '\t'.join(vcf_metrics_items)
+                
                 ### All the information extracted from BAM files
                 bam_metrics_line = []
                 for i, bam_i in enumerate(bam_files):
@@ -610,10 +646,13 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                     if i % 2 == 1:
                         sor_i = int((i-1)/2)
                         bam_metrics_line.append( paired_bam_SOR[sor_i] )
-                    
+                
                 # Combine:
                 bam_metrics_line = ['{}'.format(i) for i in bam_metrics_line]
-                out_line = out_line + '\t' + '\t'.join( bam_metrics_line )
+                
+                # Initial + VCF stuff + BAM metrics
+                out_line = out_line + '\t' + vcf_metrics_line + '\t' + '\t'.join( bam_metrics_line )
+                
                 assert len( out_line.split('\t') ) == num_columns
                 
                 # Print it out to stdout:
