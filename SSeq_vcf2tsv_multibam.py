@@ -633,14 +633,9 @@ with genome.open_textfile(mysites) as my_sites, open(outfile, 'w') as outhandle:
                 ### All the information extracted from BAM files
                 bam_metrics_line = []
                 for i, bam_i in enumerate(opened_bam_files):
-                    
                     for metric_i in bam_derived_metrics:
                         bam_metrics_line.append( metric_i[ i ] )
-                        
-                    if i % 2 == 1:
-                        sor_i = int((i-1)/2)
-                        bam_metrics_line.append( paired_bam_SOR[sor_i] )
-                
+                                        
                 # Combine:
                 bam_metrics_line = ['{}'.format(i) for i in bam_metrics_line]
                 
