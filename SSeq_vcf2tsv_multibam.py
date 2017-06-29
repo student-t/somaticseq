@@ -65,7 +65,7 @@ outfile   = args.output_tsv_file
 fai_file  = ref_fa + '.fai'
 chrom_seq = genome.faiordict2contigorder(fai_file, 'fai')
 
-assert len(bam_files) == len(prefix)
+assert len(bam_files) == len(prefixes)
 
 # Determine input format:
 if is_vcf:
