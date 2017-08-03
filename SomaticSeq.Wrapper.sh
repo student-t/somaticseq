@@ -3,15 +3,12 @@
 
 set -e
 
-OPTS=`getopt -o o:M:m:I:V:v:J:S:D:U:L:l:p:g:c:d:s:G:T:N:C:x:R:e:i:z:Z:k: --long output-dir:,mutect:,mutect2:,indelocator:,strelka-snv:,strelka-indel:,varscan-snv:,varscan-indel:,jsm:,sniper:,vardict:,muse:,lofreq-snv:,lofreq-indel:,scalpel:,genome-reference:,cosmic:,dbsnp:,snpeff-dir:,gatk:,tumor-bam:,normal-bam:,classifier-snv:,classifier-indel:,ada-r-script:,exclusion-region:,inclusion-region:,truth-indel:,truth-snv:,pass-threshold:,lowqual-threshold:,tumor-sample-name:,normal-sample-name:,keep-intermediates: -n 'SomaticSeq.Wrapper.sh'  -- "$@"`
+OPTS=`getopt -o o: --long output-dir:,mutect:,mutect2:,indelocator:,strelka-snv:,strelka-indel:,varscan-snv:,varscan-indel:,jsm:,sniper:,vardict:,muse:,lofreq-snv:,lofreq-indel:,scalpel:,genome-reference:,cosmic:,dbsnp:,gatk:,tumor-bam:,normal-bam:,classifier-snv:,classifier-indel:,ada-r-script:,exclusion-region:,inclusion-region:,truth-indel:,truth-snv:,pass-threshold:,lowqual-threshold:,tumor-sample-name:,normal-sample-name:,keep-intermediates: -n 'SomaticSeq.Wrapper.sh'  -- "$@"`
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
 echo "$OPTS"
 eval set -- "$OPTS"
-
-
-PATH=/net/kodiak/volumes/lake/shared/opt/python3/bin:/home/ltfang/apps/bedtools-2.23.0/bin/:$PATH
 
 MYDIR="$( cd "$( dirname "$0" )" && pwd )"
 
@@ -29,13 +26,13 @@ while true; do
                 *)  merged_dir=$2 ; shift 2 ;;
             esac ;;
 
-        -M | --mutect )
+        --mutect )
             case "$2" in
                 "") shift 2 ;;
                 *)  mutect_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -m | --mutect2 )
+        --mutect2 )
             case "$2" in
                 "") shift 2 ;;
                 *)  mutect2_vcf=$2 ; shift 2 ;;
@@ -53,145 +50,139 @@ while true; do
                 *)  strelka_indel_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -I | --indelocator )
+        --indelocator )
             case "$2" in
                 "") shift 2 ;;
                 *)  indelocator_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -V | --varscan-snv )
+        --varscan-snv )
             case "$2" in
                 "") shift 2 ;;
                 *)  varscan_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -v | --varscan-indel )
+        --varscan-indel )
             case "$2" in
                 "") shift 2 ;;
                 *)  varscan_indel_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -J | --jsm )
+        --jsm )
             case "$2" in
                 "") shift 2 ;;
                 *)  jsm_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -S | --sniper )
+        --sniper )
             case "$2" in
                 "") shift 2 ;;
                 *)  sniper_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -D | --vardict )
+        --vardict )
             case "$2" in
                 "") shift 2 ;;
                 *)  vardict_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -U | --muse )
+        --muse )
             case "$2" in
                 "") shift 2 ;;
                 *)  muse_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -L | --lofreq-snv )
+        --lofreq-snv )
             case "$2" in
                 "") shift 2 ;;
                 *)  lofreq_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -l | --lofreq-indel )
+        --lofreq-indel )
             case "$2" in
                 "") shift 2 ;;
                 *)  lofreq_indel_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -p | --scalpel )
+        --scalpel )
             case "$2" in
                 "") shift 2 ;;
                 *)  scalpel_vcf=$2 ; shift 2 ;;
             esac ;;
 
-        -g | --genome-reference )
+        --genome-reference )
             case "$2" in
                 "") shift 2 ;;
                 *)  hg_ref=$2 ; shift 2 ;;
             esac ;;
 
-        -c | --cosmic )
+        --cosmic )
             case "$2" in
                 "") shift 2 ;;
                 *)  cosmic=$2 ; shift 2 ;;
             esac ;;
 
-        -d | --dbsnp )
+        --dbsnp )
             case "$2" in
                 "") shift 2 ;;
                 *)  dbsnp=$2 ; shift 2 ;;
             esac ;;
 
-        -s | --snpeff-dir )
-            case "$2" in
-                "") shift 2 ;;
-                *)  snpeff_dir=$2 ; shift 2 ;;
-            esac ;;
-
-        -G | --gatk )
+        --gatk )
             case "$2" in
                 "") shift 2 ;;
                 *)  gatk=$2 ; shift 2 ;;
             esac ;;
 
-        -T | --tumor-bam )
+        --tumor-bam )
             case "$2" in
                 "") shift 2 ;;
                 *)  tbam=$2 ; shift 2 ;;
             esac ;;
 
-        -N | --normal-bam )
+        --normal-bam )
             case "$2" in
                 "") shift 2 ;;
                 *)  nbam=$2 ; shift 2 ;;
             esac ;;
 
-        -C | --classifier-snv )
+        --classifier-snv )
             case "$2" in
                 "") shift 2 ;;
                 *)  snpclassifier=$2 ; shift 2 ;;
             esac ;;
 
-        -x | --classifier-indel )
+        --classifier-indel )
             case "$2" in
                 "") shift 2 ;;
                 *)  indelclassifier=$2 ; shift 2 ;;
             esac ;;
 
-        -R | --ada-r-script )
+        --ada-r-script )
             case "$2" in
                 "") shift 2 ;;
                 *)  ada_r_script=$2 ; shift 2 ;;
             esac ;;
 
-        -e | --exclusion-region )
+        --exclusion-region )
             case "$2" in
                 "") shift 2 ;;
                 *)  masked_region=$2 ; shift 2 ;;
             esac ;;
 
-        -i | --inclusion-region )
+        --inclusion-region )
             case "$2" in
                 "") shift 2 ;;
                 *)  inclusion_region=$2 ; shift 2 ;;
             esac ;;
 
-        -z | --truth-indel )
+        --truth-indel )
             case "$2" in
                 "") shift 2 ;;
                 *)  indelgroundtruth=$2 ; shift 2 ;;
             esac ;;
 
-        -Z | --truth-snv )
+        --truth-snv )
             case "$2" in
                 "") shift 2 ;;
                 *)  snpgroundtruth=$2 ; shift 2 ;;
@@ -221,19 +212,18 @@ while true; do
                 *)  normal_name=$2 ; shift 2 ;;
             esac ;;
 
-        -k | --keep-intermediates )
+        --keep-intermediates )
              case "$2" in
                 "") shift 2 ;;
                 *)  keep_intermediates=$2 ; shift 2 ;;
             esac ;;
 
         -- ) shift; break ;;
-
         * ) break ;;
     esac
 done
 
-hg_dict=${hg_ref/\.fa*/}.dict
+hg_dict=${hg_ref%\.fa*}.dict
 
 if ! [[ -d ${merged_dir} ]];
 then
@@ -247,45 +237,57 @@ files_to_delete=''
 # MuTect
 if [[ -r $mutect_vcf ]]; then
     $MYDIR/utilities/modify_MuTect.py -type snp -infile ${mutect_vcf} -outfile ${merged_dir}/mutect.snp.vcf -nbam ${nbam} -tbam ${tbam}
-    files_to_delete="${merged_dir}/mutect.snp.vcf* $files_to_delete"
+    files_to_delete="${merged_dir}/mutect.snp.vcf ${merged_dir}/mutect.snp.vcf.idx $files_to_delete"
 fi
 
 # If INDEL:
 # Indelocator:
 if [[ -r $indelocator_vcf ]]; then
     $MYDIR/utilities/modify_MuTect.py -type indel -infile ${indelocator_vcf} -outfile ${merged_dir}/indelocator.vcf -nbam ${nbam} -tbam ${tbam}
-    files_to_delete="${merged_dir}/indelocator.vcf* $files_to_delete"
+    files_to_delete="${merged_dir}/indelocator.vcf ${merged_dir}/indelocator.vcf.idx $files_to_delete"
 fi
 
 # MuTect2
 if [[ -r $mutect2_vcf ]]; then
     $MYDIR/utilities/modify_MuTect2.py -infile $mutect2_vcf -snv ${merged_dir}/mutect.snp.vcf -indel ${merged_dir}/mutect.indel.vcf
-    files_to_delete="${merged_dir}/mutect.snp.vcf* ${merged_dir}/mutect.indel.vcf* $files_to_delete"
-fi
-
-
-# SomaticSniper:
-if [[ -r $sniper_vcf ]]; then
-    $MYDIR/utilities/modify_VJSD.py -method SomaticSniper -infile ${sniper_vcf} -outfile ${merged_dir}/somaticsniper.vcf
-    files_to_delete="${merged_dir}/somaticsniper.vcf* $files_to_delete"
-fi
-
-# JointSNVMix2:
-if [[ -r $jsm_vcf ]] ; then
-    $MYDIR/utilities/modify_VJSD.py -method JointSNVMix2  -infile ${jsm_vcf} -outfile ${merged_dir}/jsm.vcf
-    files_to_delete="${merged_dir}/jsm.vcf* $files_to_delete"
+    files_to_delete="${merged_dir}/mutect.snp.vcf ${merged_dir}/mutect.snp.vcf.idx ${merged_dir}/mutect.indel.vcf ${merged_dir}/mutect.indel.vcf.idx $files_to_delete"
 fi
 
 # VarScan2:
 if [[ -r $varscan_vcf ]]; then
     $MYDIR/utilities/modify_VJSD.py -method VarScan2 -infile ${varscan_vcf} -outfile ${merged_dir}/varscan2.snp.vcf
-    files_to_delete="${merged_dir}/varscan2.snp.vcf* $files_to_delete"
+    files_to_delete="${merged_dir}/varscan2.snp.vcf ${merged_dir}/varscan2.snp.vcf.idx $files_to_delete"
+fi
+
+# VarScan2:
+if [[ -r $varscan_indel_vcf ]]; then
+    $MYDIR/utilities/modify_VJSD.py -method VarScan2 -infile ${varscan_indel_vcf} -outfile ${merged_dir}/varscan2.indel.vcf
+    files_to_delete="${merged_dir}/varscan2.indel.vcf ${merged_dir}/varscan2.indel.vcf.idx $files_to_delete"
+fi
+
+# JointSNVMix2:
+if [[ -r $jsm_vcf ]] ; then
+    $MYDIR/utilities/modify_VJSD.py -method JointSNVMix2  -infile ${jsm_vcf} -outfile ${merged_dir}/jsm.vcf
+    files_to_delete="${merged_dir}/jsm.vcf ${merged_dir}/jsm.vcf.idx $files_to_delete"
+fi
+
+# SomaticSniper:
+if [[ -r $sniper_vcf ]]; then
+    $MYDIR/utilities/modify_VJSD.py -method SomaticSniper -infile ${sniper_vcf} -outfile ${merged_dir}/somaticsniper.vcf
+    files_to_delete="${merged_dir}/somaticsniper.vcf ${merged_dir}/somaticsniper.vcf.idx $files_to_delete"
+fi
+
+# VarDict:
+# Does both SNV and INDEL
+if [[ -r $vardict_vcf ]]; then
+    $MYDIR/utilities/modify_VJSD.py -method VarDict -infile ${vardict_vcf} -outfile ${merged_dir}/vardict.vcf -filter paired
+    files_to_delete="${merged_dir}/snp.vardict.vcf ${merged_dir}/snp.vardict.vcf.idx ${merged_dir}/indel.vardict.vcf ${merged_dir}/indel.vardict.vcf.idx $files_to_delete"
 fi
 
 # MuSE:
 if [[ -r $muse_vcf ]]; then
     $MYDIR/utilities/modify_VJSD.py -method MuSE  -infile ${muse_vcf} -outfile ${merged_dir}/muse.vcf
-    files_to_delete="${merged_dir}/muse.vcf* $files_to_delete"
+    files_to_delete="${merged_dir}/muse.vcf ${merged_dir}/muse.vcf.idx $files_to_delete"
 fi
 
 # LoFreq:
@@ -294,21 +296,8 @@ if [[ -r $lofreq_vcf ]]; then
     if [ ${lofreq_vcf: -3} == ".gz" ]; then
         gunzip -c $lofreq_vcf > ${merged_dir}/lofreq.snv.vcf
         lofreq_vcf="${merged_dir}/lofreq.snv.vcf"
-        files_to_delete="${merged_dir}/lofreq.snv.vcf* $files_to_delete"
+        files_to_delete="${merged_dir}/lofreq.snv.vcf ${merged_dir}/lofreq.snv.vcf.idx $files_to_delete"
     fi
-fi
-
-# VarScan2:
-if [[ -r $varscan_indel_vcf ]]; then
-    $MYDIR/utilities/modify_VJSD.py -method VarScan2 -infile ${varscan_indel_vcf} -outfile ${merged_dir}/varscan2.indel.vcf
-    files_to_delete="${merged_dir}/varscan2.indel.vcf* $files_to_delete"
-fi
-
-# VarDict:
-# Does both SNV and INDEL
-if [[ -r $vardict_vcf ]]; then
-    $MYDIR/utilities/modify_VJSD.py -method VarDict -infile ${vardict_vcf} -outfile ${merged_dir}/vardict.vcf -filter paired
-    files_to_delete="${merged_dir}/snp.vardict.vcf* ${merged_dir}/indel.vardict.vcf* $files_to_delete"
 fi
 
 # LoFreq:
@@ -317,19 +306,22 @@ if [[ -r $lofreq_indel_vcf ]]; then
     if [ ${lofreq_indel_vcf: -3} == ".gz" ]; then
         gunzip -c $lofreq_indel_vcf > ${merged_dir}/lofreq.indel.vcf
         lofreq_indel_vcf="${merged_dir}/lofreq.indel.vcf"
-        files_to_delete="${merged_dir}/lofreq.indel.vcf* $files_to_delete"
+        files_to_delete="${merged_dir}/lofreq.indel.vcf ${merged_dir}/lofreq.indel.vcf.idx $files_to_delete"
     fi
 fi
 
-# Strelka: this is so that Strelka INDEL VCF does not clash with Scalpel, for reasons I haven't yet figured out. 
-if [[ -r $strelka_indel_vcf ]]; then
-    if [[ $strelka_indel_vcf == *.gz ]]; then
-        gunzip -c $strelka_indel_vcf | awk -F "\t" '{ if ($0 !~ /^##/) print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7 "\t" $8; else print $0}' OFS="\t" > ${merged_dir}/strelka.indel.truncated.vcf
-    else
-        cat $strelka_indel_vcf       | awk -F "\t" '{ if ($0 !~ /^##/) print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7 "\t" $8; else print $0}' OFS="\t" > ${merged_dir}/strelka.indel.truncated.vcf
-    fi
-    files_to_delete="${merged_dir}/strelka.indel.truncated.vcf* $files_to_delete"
+# Strelka: this is so that Strelka INDEL VCF does not clash with Scalpel, for reasons I haven't yet figured out.
+if [[ -r $strelka_snv_vcf ]]; then
+    $MYDIR/utilities/modify_Strelka.py -infile ${strelka_snv_vcf} -outfile ${merged_dir}/strelka.snv.vcf
+    files_to_delete="${merged_dir}/strelka.snv.vcf ${merged_dir}/strelka.snv.vcf.idx $files_to_delete"
 fi
+
+if [[ -r $strelka_indel_vcf ]]; then
+    $MYDIR/utilities/modify_Strelka.py -infile ${strelka_indel_vcf} -outfile ${merged_dir}/strelka.indel.vcf
+    files_to_delete="${merged_dir}/strelka.indel.vcf ${merged_dir}/strelka.indel.vcf.idx $files_to_delete"
+fi
+
+
 
 # dbSNP
 if [[ -r ${dbsnp} ]]; then
@@ -347,12 +339,12 @@ fi
 
 
 #################### SNV ####################
-if [[ -r ${merged_dir}/mutect.snp.vcf || -r ${strelka_snv_vcf} || -r ${merged_dir}/somaticsniper.vcf || -r ${merged_dir}/jsm.vcf || -r ${merged_dir}/varscan2.snp.vcf || -r ${merged_dir}/muse.vcf || -r ${merged_dir}/snp.vardict.vcf || -r ${lofreq_vcf} ]]
+if [[ -r ${merged_dir}/mutect.snp.vcf || -r ${merged_dir}/strelka.snv.vcf  || -r ${merged_dir}/somaticsniper.vcf || -r ${merged_dir}/jsm.vcf || -r ${merged_dir}/varscan2.snp.vcf || -r ${merged_dir}/muse.vcf || -r ${merged_dir}/snp.vardict.vcf || -r ${lofreq_vcf} ]]
 then
 
     mergesnp=''
     all_snp=''
-    for vcf in ${merged_dir}/mutect.snp.vcf ${merged_dir}/varscan2.snp.vcf ${merged_dir}/jsm.vcf ${merged_dir}/somaticsniper.vcf ${merged_dir}/snp.vardict.vcf ${merged_dir}/muse.vcf ${lofreq_vcf} ${strelka_snv_vcf}
+    for vcf in ${merged_dir}/mutect.snp.vcf ${merged_dir}/varscan2.snp.vcf ${merged_dir}/jsm.vcf ${merged_dir}/somaticsniper.vcf ${merged_dir}/snp.vardict.vcf ${merged_dir}/muse.vcf ${lofreq_vcf} ${merged_dir}/strelka.snv.vcf 
     do
         if [[ -r $vcf ]]; then
             mergesnp="$mergesnp --variant $vcf"
@@ -366,7 +358,7 @@ then
         cat $all_snp | egrep -v '^#'  | awk -F "\t" '{print $1 "\t" $2 "\t.\t" $4 "\t" $5}' | sort | uniq | awk -F "\t" '{print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" "." "\t" "PASS" "\t" "."}' | cat <(echo -e '##fileformat=VCFv4.1\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO') - | $MYDIR/utilities/vcfsorter.pl ${hg_dict} - > ${merged_dir}/CombineVariants_MVJSD.snp.vcf
     fi
 
-    files_to_delete="${merged_dir}/CombineVariants_MVJSD.snp.vcf* $files_to_delete"
+    files_to_delete="${merged_dir}/CombineVariants_MVJSD.snp.vcf ${merged_dir}/CombineVariants_MVJSD.snp.vcf.idx $files_to_delete"
 
 
     if [[ -r ${merged_dir}/mutect.snp.vcf ]]; then
@@ -504,12 +496,12 @@ fi
 
 
 #################### INDEL ####################
-if [[ -r ${merged_dir}/mutect.indel.vcf || -r ${merged_dir}/strelka.indel.truncated.vcf || -r ${merged_dir}/varscan2.indel.vcf || -r ${merged_dir}/indel.vardict.vcf || -r ${lofreq_indel_vcf} || ${merged_dir}/indelocator.vcf || $scalpel_vcf ]]
+if [[ -r ${merged_dir}/mutect.indel.vcf || -r ${merged_dir}/strelka.indel.vcf || -r ${merged_dir}/varscan2.indel.vcf || -r ${merged_dir}/indel.vardict.vcf || -r ${lofreq_indel_vcf} || ${merged_dir}/indelocator.vcf || $scalpel_vcf ]]
 then
 
     mergeindel=''
     all_indel=''
-    for vcf in ${merged_dir}/mutect.indel.vcf ${merged_dir}/strelka.indel.truncated.vcf ${merged_dir}/indel.vardict.vcf ${merged_dir}/varscan2.indel.vcf ${lofreq_indel_vcf} ${merged_dir}/indelocator.vcf $scalpel_vcf
+    for vcf in ${merged_dir}/mutect.indel.vcf ${merged_dir}/strelka.indel.vcf ${merged_dir}/indel.vardict.vcf ${merged_dir}/varscan2.indel.vcf ${lofreq_indel_vcf} ${merged_dir}/indelocator.vcf $scalpel_vcf
     do
         if [[ -r $vcf ]]; then
             mergeindel="$mergeindel --variant $vcf"
@@ -523,7 +515,7 @@ then
         cat $all_indel | egrep -v '^#'  | awk -F "\t" '{print $1 "\t" $2 "\t.\t" $4 "\t" $5}' | sort | uniq | awk -F "\t" '{print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" "." "\t" "PASS" "\t" "."}' | cat <(echo -e '##fileformat=VCFv4.1\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO') - | $MYDIR/utilities/vcfsorter.pl ${hg_dict} - > ${merged_dir}/CombineVariants_MVJSD.indel.vcf
     fi
 
-    files_to_delete="${merged_dir}/CombineVariants_MVJSD.indel.vcf* $files_to_delete"
+    files_to_delete="${merged_dir}/CombineVariants_MVJSD.indel.vcf ${merged_dir}/CombineVariants_MVJSD.indel.vcf.idx $files_to_delete"
 
 
     ## MuTect2 will take precedence over Indelocator
@@ -638,6 +630,17 @@ then
 fi
 
 # Clean up intermediate files if wants to
-if [ $keep_intermediates == 0 ]; then
-    rm ${files_to_delete}
+if [ $keep_intermediates == 0 ]
+then
+
+    for file in ${files_to_delete}
+    do
+
+        if [[ -e $file ]]
+        then
+            rm $file
+        fi
+
+    done
+
 fi
