@@ -3,7 +3,7 @@
 
 set -e
 
-OPTS=`getopt -o o: --long output-dir:,tumor-bam:,normal-bam:,tumor-name:,normal-name:,human-reference:,dbsnp:,cosmic:,action:,threads:,mutect,mutect2,varscan2,jointsnvmix2,somaticsniper,vardict,muse,lofreq,scalpel,strelka,somaticseq,ada-r-script:,classifier-snv:,classifier-indel:,truth-snv:,truth-indel: -n 'submit_callers_multiThreads.sh'  -- "$@"`
+OPTS=`getopt -o o: --long output-dir:,tumor-bam:,normal-bam:,tumor-name:,normal-name:,human-reference:,selector:,dbsnp:,cosmic:,action:,threads:,mutect,mutect2,varscan2,jointsnvmix2,somaticsniper,vardict,muse,lofreq,scalpel,strelka,somaticseq,ada-r-script:,classifier-snv:,classifier-indel:,truth-snv:,truth-indel: -n 'submit_callers_multiThreads.sh'  -- "$@"`
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -55,6 +55,12 @@ while true; do
         case "$2" in
             "") shift 2 ;;
             *)  HUMAN_REFERENCE=$2 ; shift 2 ;;
+        esac ;;
+
+    --selector )
+        case "$2" in
+            "") shift 2 ;;
+            *)  SELECTOR=$2 ; shift 2 ;;
         esac ;;
 
     --dbsnp )
@@ -155,11 +161,15 @@ VERSION='2.3.0'
 timestamp=$( date +"%Y-%m-%d_%H-%M-%S_%N" )
 logdir=${outdir}/logs
 mkdir -p ${logdir}
-chmod a+w ${outdir}
 
-cat ${HUMAN_REFERENCE}.fai | awk -F "\t" '{print $1 "\t0\t" $2}' | awk -F "\t" '$1 ~ /^(chr)?[0-9XYMT]+$/' > ${outdir}/genome.bed
+if [[ $SELECTOR ]]
+then
+    cp $SELECTOR ${outdir}/genome.bed
+else
+    cat ${HUMAN_REFERENCE}.fai | awk -F "\t" '{print $1 "\t0\t" $2}' | awk -F "\t" '$1 ~ /^(chr)?[0-9XYMT]+$/' > ${outdir}/genome.bed
+fi
 
-docker run -v /:/mnt -i lethalfang/somaticseq:${VERSION} \
+docker run -v /:/mnt -u $UID --rm -i lethalfang/somaticseq:${VERSION} \
 /opt/somaticseq/utilities/split_Bed_into_equal_regions.py \
 -infile /mnt/${outdir}/genome.bed -num $threads -outfiles /mnt/${outdir}/bed
 
@@ -196,7 +206,6 @@ while [[ $ith_thread -le $threads ]]
 do
 
     mkdir -p ${outdir}/${ith_thread}
-    chmod a+w ${outdir}/${ith_thread}
     mv ${outdir}/${ith_thread}.bed ${outdir}/${ith_thread}
 
 
@@ -331,12 +340,19 @@ do
         if [[ $classifier_snv ]];   then classifier_snv_text="--classifier_snv /mnt/${classifier_snv}"      ; fi
         if [[ $classifier_indel ]]; then classifier_indel_text="--classifier_indel /mnt/${classifier_indel}"; fi
         if [[ $truth_snv ]];        then truth_snv_text="--truth-snv /mnt/${truth_snv}"                     ; fi
-        if [[ $truth_indel ]];      then truth_indel_text="--truth-indel /mnt/${truth_dinel}"               ; fi
-        if [[ $ada_r_script ]];     then ada_r_script_text="--ada-r-script /mnt/${ada_r_script}"            ; fi
+        if [[ $truth_indel ]];      then truth_indel_text="--truth-indel /mnt/${truth_indel}"               ; fi
 
         if [[ ${dbsnp} ]];          then dbsnp_input="--dbsnp ${dbsnp}"                                     ; fi
-        if [[ ${cosmic} ]];      	then cosmic_input="--cosmic ${cosmic}"                                  ; fi
-    
+        if [[ ${cosmic} ]];         then cosmic_input="--cosmic ${cosmic}"                                  ; fi
+
+        if [[ $ada_r_script ]]; then
+            ada_r_script_text="--ada-r-script /mnt/${ada_r_script}"
+        elif [[ $truth_snv || $truth_indel ]]; then
+            ada_r_script_text="--ada-r-script /opt/somaticseq/r_scripts/ada_model_builder_ntChange.R"
+        elif [[ $classifier_snv || $classifier_indel ]]; then
+            ada_r_script_text="--ada-r-script /opt/somaticseq/r_scripts/ada_model_predictor.R"
+        fi
+        
         $MYDIR/submit_SomaticSeq.sh \
         --normal-bam ${normal_bam} \
         --tumor-bam ${tumor_bam} \
@@ -357,11 +373,11 @@ do
         $scalpel_input \
         $strelka_snv_input \
         $strelka_indel_input \
-        $classifier_snv \
-        $classifier_indel \
-        $truth_snv \
-        $truth_indel \
-        $ada_r_script \
+        $classifier_snv_text \
+        $classifier_indel_text \
+        $truth_snv_text \
+        $truth_indel_text \
+        $ada_r_script_text \
         --action echo
     fi
         

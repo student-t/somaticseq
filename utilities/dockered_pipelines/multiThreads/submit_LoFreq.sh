@@ -85,14 +85,14 @@ echo "" >> $lofreq_script
 echo "#$ -o ${logdir}" >> $lofreq_script
 echo "#$ -e ${logdir}" >> $lofreq_script
 echo "#$ -S /bin/bash" >> $lofreq_script
-echo '#$ -l h_vmem=8G' >> $lofreq_script
+echo '#$ -l h_vmem=12G' >> $lofreq_script
 echo 'set -e' >> $lofreq_script
 echo "" >> $lofreq_script
 
 echo 'echo -e "Start at `date +"%Y/%m/%d %H:%M:%S"`" 1>&2' >> $lofreq_script
 echo "" >> $lofreq_script
 
-echo "docker run -v /:/mnt -i marghoob/lofreq:2.1.2 \\" >> $lofreq_script
+echo "docker run -v /:/mnt -u $UID --rm -i lethalfang/lofreq:2.1.3.1 \\" >> $lofreq_script
 echo "lofreq somatic \\" >> $lofreq_script
 echo "-t /mnt/${tumor_bam} \\" >> $lofreq_script
 echo "-n /mnt/${normal_bam} \\" >> $lofreq_script

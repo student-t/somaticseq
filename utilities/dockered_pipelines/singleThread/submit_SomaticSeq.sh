@@ -43,7 +43,7 @@ while true; do
         esac ;;
 
     --selector )
-	case "$2" in
+    case "$2" in
             "") shift 2 ;;
             *)  SELECTOR=$2 ; shift 2 ;;
         esac ;;
@@ -178,7 +178,6 @@ VERSION='2.3.0'
 
 logdir=${outdir}/logs
 mkdir -p ${logdir}
-chmod a+w ${outdir}
 
 sseq_script=${outdir}/logs/sseq_${timestamp}.cmd
 
@@ -212,11 +211,11 @@ if [[ $strelka_snv_vcf ]];   then strelka_snv_text="--strelka-snv /mnt/${strelka
 if [[ $strelka_indel_vcf ]]; then strelka_indel_text="--strelka-indel /mnt/${strelka_indel_vcf}"; fi
 
 # SomaticSeq modes:
-if [[ $classifier_snv ]];   then classifier_snv_text="--classifier_snv /mnt/${classifier_snv}";       fi
-if [[ $classifier_indel ]]; then classifier_indel_text="--classifier_indel /mnt/${classifier_indel}"; fi
-if [[ $truth_snv ]];        then truth_snv_text="--truth-snv /mnt/${truth_snv}"                     ; fi
-if [[ $truth_indel ]];      then truth_indel_text="--truth-indel /mnt/${truth_dinel}"               ; fi
-if [[ $ada_r_script ]];     then ada_r_script_text="--ada-r-script /mnt/${ada_r_script}"            ; fi
+if [[ $classifier_snv ]];   then classifier_snv_text="--classifier_snv ${classifier_snv}";       fi
+if [[ $classifier_indel ]]; then classifier_indel_text="--classifier_indel ${classifier_indel}"; fi
+if [[ $truth_snv ]];        then truth_snv_text="--truth-snv ${truth_snv}"                     ; fi
+if [[ $truth_indel ]];      then truth_indel_text="--truth-indel ${truth_indel}"               ; fi
+if [[ $ada_r_script ]];     then ada_r_script_text="--ada-r-script ${ada_r_script}"            ; fi
 
 echo "#!/bin/bash" > $sseq_script
 echo "" >> $sseq_script
@@ -224,7 +223,7 @@ echo "" >> $sseq_script
 echo "#$ -o ${logdir}" >> $sseq_script
 echo "#$ -e ${logdir}" >> $sseq_script
 echo "#$ -S /bin/bash" >> $sseq_script
-echo '#$ -l h_vmem=5G' >> $sseq_script
+#echo '#$ -l h_vmem=5G' >> $sseq_script  # Machine learning may require a lot more than 5GB of memory
 echo 'set -e' >> $sseq_script
 echo "" >> $sseq_script
 
@@ -234,7 +233,7 @@ echo "" >> $sseq_script
 echo "docker pull lethalfang/somaticseq:${VERSION}" >> $sseq_script
 echo "" >> $sseq_script
 
-echo "docker run -v /:/mnt -i lethalfang/somaticseq:${VERSION} \\" >> $sseq_script
+echo "docker run -v /:/mnt -u $UID --rm -i lethalfang/somaticseq:${VERSION} \\" >> $sseq_script
 echo "/opt/somaticseq/SomaticSeq.Wrapper.sh \\" >> $sseq_script
 echo "--output-dir       /mnt/${outdir} \\" >> $sseq_script
 echo "--genome-reference /mnt/${HUMAN_REFERENCE} \\" >> $sseq_script
