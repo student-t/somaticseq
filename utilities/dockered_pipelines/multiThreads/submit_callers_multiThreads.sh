@@ -3,7 +3,7 @@
 
 set -e
 
-OPTS=`getopt -o o: --long output-dir:,tumor-bam:,normal-bam:,tumor-name:,normal-name:,human-reference:,selector:,dbsnp:,cosmic:,action:,threads:,mutect,mutect2,varscan2,jointsnvmix2,somaticsniper,vardict,muse,lofreq,scalpel,strelka,somaticseq,ada-r-script:,classifier-snv:,classifier-indel:,truth-snv:,truth-indel: -n 'submit_callers_multiThreads.sh'  -- "$@"`
+OPTS=`getopt -o o: --long output-dir:,somaticseq-dir:,tumor-bam:,normal-bam:,tumor-name:,normal-name:,human-reference:,selector:,dbsnp:,cosmic:,action:,somaticseq-action:,threads:,mutect,mutect2,varscan2,jointsnvmix2,somaticsniper,vardict,muse,lofreq,scalpel,strelka,somaticseq,ada-r-script:,classifier-snv:,classifier-indel:,truth-snv:,truth-indel: -n 'submit_callers_multiThreads.sh'  -- "$@"`
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -17,6 +17,9 @@ timestamp=$( date +"%Y-%m-%d_%H-%M-%S_%N" )
 tumor_name='TUMOR'
 normal_name='NORMAL'
 action='echo'
+somaticseq_action='echo'
+somaticseq_dir='SomaticSeq'
+
 threads=12
 
 while true; do
@@ -26,6 +29,12 @@ while true; do
             "") shift 2 ;;
             *)  outdir=$2 ; shift 2 ;;
     esac ;;
+
+    --somaticseq-dir )
+        case "$2" in
+            "") shift 2 ;;
+            *)  somaticseq_dir=$2 ; shift 2 ;;
+        esac ;;
 
     --tumor-bam )
         case "$2" in
@@ -80,7 +89,13 @@ while true; do
             "") shift 2 ;;
             *)  action=$2 ; shift 2 ;;
         esac ;;
-
+        
+    --somaticseq-action )
+        case "$2" in
+            "") shift 2 ;;
+            *)  somaticseq_action=$2 ; shift 2 ;;
+        esac ;;
+        
     --threads )
         case "$2" in
             "") shift 2 ;;
@@ -156,7 +171,7 @@ while true; do
 
 done
 
-VERSION='2.3.0'
+VERSION='2.3.2'
 
 timestamp=$( date +"%Y-%m-%d_%H-%M-%S_%N" )
 logdir=${outdir}/logs
@@ -169,7 +184,7 @@ else
     cat ${HUMAN_REFERENCE}.fai | awk -F "\t" '{print $1 "\t0\t" $2}' | awk -F "\t" '$1 ~ /^(chr)?[0-9XYMT]+$/' > ${outdir}/genome.bed
 fi
 
-docker run -v /:/mnt -u $UID --rm -i lethalfang/somaticseq:${VERSION} \
+docker run --rm -v /:/mnt -u $UID -i lethalfang/somaticseq:${VERSION} \
 /opt/somaticseq/utilities/split_Bed_into_equal_regions.py \
 -infile /mnt/${outdir}/genome.bed -num $threads -outfiles /mnt/${outdir}/bed
 
@@ -250,9 +265,26 @@ do
         --dbsnp ${dbsnp} \
         --action $action
     
-        mutect2_input="--mutect2 ${outdir}/MuTect2.vcf"
+        mutect2_input="--mutect2 ${outdir}/${ith_thread}/MuTect2.vcf"
     fi
         
+
+    if [[ $varscan2 -eq 1 ]]
+    then
+        $MYDIR/submit_VarScan2.sh \
+        --normal-bam ${normal_bam} \
+        --tumor-bam ${tumor_bam} \
+        --out-dir ${outdir}/${ith_thread} \
+        --out-vcf VarScan2.vcf \
+        --selector ${outdir}/${ith_thread}/${ith_thread}.bed \
+        --human-reference ${HUMAN_REFERENCE} \
+        --action $action
+    
+        varscan_snv_input="--varscan-snv ${outdir}/${ith_thread}/VarScan2.snp.vcf"
+        varscan_indel_input="--varscan-indel ${outdir}/${ith_thread}/VarScan2.indel.vcf"
+    fi
+
+
         
     if [[ $vardict -eq 1 ]]
     then
@@ -337,8 +369,8 @@ do
     if [[ $somaticseq -eq 1 ]]
     then
         # SomaticSeq modes:
-        if [[ $classifier_snv ]];   then classifier_snv_text="--classifier_snv /mnt/${classifier_snv}"      ; fi
-        if [[ $classifier_indel ]]; then classifier_indel_text="--classifier_indel /mnt/${classifier_indel}"; fi
+        if [[ $classifier_snv ]];   then classifier_snv_text="--classifier-snv /mnt/${classifier_snv}"      ; fi
+        if [[ $classifier_indel ]]; then classifier_indel_text="--classifier-indel /mnt/${classifier_indel}"; fi
         if [[ $truth_snv ]];        then truth_snv_text="--truth-snv /mnt/${truth_snv}"                     ; fi
         if [[ $truth_indel ]];      then truth_indel_text="--truth-indel /mnt/${truth_indel}"               ; fi
 
@@ -356,7 +388,7 @@ do
         $MYDIR/submit_SomaticSeq.sh \
         --normal-bam ${normal_bam} \
         --tumor-bam ${tumor_bam} \
-        --out-dir ${outdir}/${ith_thread}/SomaticSeq \
+        --out-dir ${outdir}/${ith_thread}/${somaticseq_dir} \
         --human-reference ${HUMAN_REFERENCE} \
         $dbsnp_input \
         $cosmic_input \
@@ -364,6 +396,8 @@ do
         $mutect_input \
         $indelocator_input \
         $mutect2_input \
+        $varscan_snv_input \
+        $varscan_indel_input \
         $jsm_input \
         $sniper_input \
         $vardict_input \
@@ -378,7 +412,7 @@ do
         $truth_snv_text \
         $truth_indel_text \
         $ada_r_script_text \
-        --action echo
+        --action ${somaticseq_action}
     fi
         
     ith_thread=$(( $ith_thread + 1))

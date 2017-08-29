@@ -3,7 +3,7 @@
 
 set -e
 
-OPTS=`getopt -o o: --long out-dir:,out-vcf:,tumor-bam:,normal-bam:,human-reference:,action: -n 'submit_Strelka.sh'  -- "$@"`
+OPTS=`getopt -o o: --long out-dir:,out-vcf:,tumor-bam:,normal-bam:,human-reference:,selector:,action: -n 'submit_Strelka.sh'  -- "$@"`
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -42,6 +42,12 @@ while true; do
             *)  normal_bam=$2 ; shift 2 ;;
         esac ;;
 
+    --selector )
+        case "$2" in
+            "") shift 2 ;;
+            *) SELECTOR=$2 ; shift 2 ;;
+        esac ;;
+
     --human-reference )
         case "$2" in
             "") shift 2 ;;
@@ -65,35 +71,51 @@ vcf_prefix=${outvcf%\.vcf}
 logdir=${outdir}/logs
 mkdir -p ${logdir}
 
-streka_script=${outdir}/logs/strelka_${timestamp}.cmd
+strelka_script=${outdir}/logs/strelka_${timestamp}.cmd
 
-echo "#!/bin/bash" > $streka_script
-echo "" >> $streka_script
+echo "#!/bin/bash" > $strelka_script
+echo "" >> $strelka_script
 
-echo "#$ -o ${logdir}" >> $streka_script
-echo "#$ -e ${logdir}" >> $streka_script
-echo "#$ -S /bin/bash" >> $streka_script
-echo '#$ -l h_vmem=6G' >> $streka_script
-echo 'set -e' >> $streka_script
-echo "" >> $streka_script
+echo "#$ -o ${logdir}" >> $strelka_script
+echo "#$ -e ${logdir}" >> $strelka_script
+echo "#$ -S /bin/bash" >> $strelka_script
+echo '#$ -l h_vmem=6G' >> $strelka_script
+echo 'set -e' >> $strelka_script
+echo "" >> $strelka_script
 
-echo 'echo -e "Start at `date +"%Y/%m/%d %H:%M:%S"`" 1>&2' >> $streka_script
-echo "" >> $streka_script
+echo 'echo -e "Start at `date +"%Y/%m/%d %H:%M:%S"`" 1>&2' >> $strelka_script
+echo "" >> $strelka_script
 
-echo "docker run -v /:/mnt -u $UID --rm -i lethalfang/strelka:2.7.1 \\" >> $streka_script
-echo "/opt/strelka2/bin/configureStrelkaSomaticWorkflow.py \\" >> $streka_script
-echo "--tumorBam=/mnt/${tumor_bam} \\" >> $streka_script
-echo "--normalBam=/mnt/${normal_bam} \\" >> $streka_script
-echo "--referenceFasta=/mnt/${HUMAN_REFERENCE}  \\" >> $streka_script
-echo "--callMemMb=4096 \\" >> $streka_script
-echo "--exome \\" >> $streka_script
-echo "--runDir=/mnt/${outdir}/${outvcf%\.vcf}" >> $streka_script
-echo "" >> $streka_script
 
-echo "docker run -v /:/mnt -u $UID --rm -i lethalfang/strelka:2.7.1 \\" >> $streka_script
-echo "/mnt/${outdir}/${outvcf%\.vcf}/runWorkflow.py -m local -j 1" >> $streka_script
+selector_basename=`basename ${SELECTOR}`
+if [[ -r ${SELECTOR}.gz && -r ${SELECTOR}.gz.tbi ]]
+then
+    input_BED=${SELECTOR}.gz
+    
+else
+    echo "cat ${SELECTOR} | docker run -v /:/mnt -u $UID --rm -i lethalfang/tabix:1.2.1 bgzip > ${outdir}/${selector_basename}.gz" >> $strelka_script
+    echo "docker run -v /:/mnt -u $UID --rm -i lethalfang/tabix:1.2.1 tabix /mnt/${outdir}/${selector_basename}.gz" >> $strelka_script
+    echo "" >> $strelka_script
+    
+    input_BED=${outdir}/${selector_basename}.gz
+fi
 
-echo "" >> $streka_script
-echo 'echo -e "Done at `date +"%Y/%m/%d %H:%M:%S"`" 1>&2' >> $streka_script
 
-${action} $streka_script
+echo "docker run --rm -v /:/mnt -u $UID -i lethalfang/strelka:2.8.2 \\" >> $strelka_script
+echo "/opt/strelka/bin/configureStrelkaSomaticWorkflow.py \\" >> $strelka_script
+echo "--tumorBam=/mnt/${tumor_bam} \\" >> $strelka_script
+echo "--normalBam=/mnt/${normal_bam} \\" >> $strelka_script
+echo "--referenceFasta=/mnt/${HUMAN_REFERENCE}  \\" >> $strelka_script
+echo "--callMemMb=4096 \\" >> $strelka_script
+echo "--exome \\" >> $strelka_script
+echo "--callRegions=/mnt/${input_BED} \\" >> $strelka_script
+echo "--runDir=/mnt/${outdir}/${outvcf%\.vcf}" >> $strelka_script
+echo "" >> $strelka_script
+
+echo "docker run --rm -v /:/mnt -u $UID -i lethalfang/strelka:2.8.2 \\" >> $strelka_script
+echo "/mnt/${outdir}/${outvcf%\.vcf}/runWorkflow.py -m local -j 1" >> $strelka_script
+
+echo "" >> $strelka_script
+echo 'echo -e "Done at `date +"%Y/%m/%d %H:%M:%S"`" 1>&2' >> $strelka_script
+
+${action} $strelka_script

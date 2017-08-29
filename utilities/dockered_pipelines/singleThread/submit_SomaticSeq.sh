@@ -3,7 +3,7 @@
 
 set -e
 
-OPTS=`getopt -o o: --long out-dir:,tumor-bam:,normal-bam:,human-reference:,selector:,dbsnp:,cosmic:,action:,mutect:,indelocator:,mutect2:,jsm:,sniper:,vardict:,muse:,lofreq-snv:,lofreq-indel:,scalpel:,strelka-snv:,strelka-indel:,ada-r-script:,classifier-snv:,classifier-indel:,truth-snv:,truth-indel: -n 'submit_SomaticSeq.sh'  -- "$@"`
+OPTS=`getopt -o o: --long out-dir:,tumor-bam:,normal-bam:,human-reference:,selector:,dbsnp:,cosmic:,action:,mutect:,indelocator:,mutect2:,varscan-snv:,varscan-indel:,jsm:,sniper:,vardict:,muse:,lofreq-snv:,lofreq-indel:,scalpel:,strelka-snv:,strelka-indel:,ada-r-script:,classifier-snv:,classifier-indel:,truth-snv:,truth-indel: -n 'submit_SomaticSeq.sh'  -- "$@"`
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -43,7 +43,7 @@ while true; do
         esac ;;
 
     --selector )
-    case "$2" in
+        case "$2" in
             "") shift 2 ;;
             *)  SELECTOR=$2 ; shift 2 ;;
         esac ;;
@@ -69,7 +69,13 @@ while true; do
     --mutect )
         case "$2" in
             "") shift 2 ;;
-                *)  mutect_vcf=$2 ; shift 2 ;;
+            *)  mutect_vcf=$2 ; shift 2 ;;
+        esac ;;
+
+    --indelocator )
+        case "$2" in
+            "") shift 2 ;;
+            *)  indelocator_vcf=$2 ; shift 2 ;;
         esac ;;
 
     --mutect2 )
@@ -78,22 +84,16 @@ while true; do
             *)  mutect2_vcf=$2 ; shift 2 ;;
         esac ;;
 
-    --strelka-snv )
+    --varscan-snv )
         case "$2" in
             "") shift 2 ;;
-            *)  strelka_snv_vcf=$2 ; shift 2 ;
+            *)  varscan_snv_vcf=$2 ; shift 2 ;;
         esac ;;
 
-    --strelka-indel )
+    --varscan-indel )
         case "$2" in
             "") shift 2 ;;
-            *)  strelka_indel_vcf=$2 ; shift 2 ;;
-        esac ;;
-
-    --indelocator )
-        case "$2" in
-            "") shift 2 ;;
-            *)  indelocator_vcf=$2 ; shift 2 ;;
+            *)  varscan_indel_vcf=$2 ; shift 2 ;;
         esac ;;
 
     --jsm )
@@ -138,6 +138,18 @@ while true; do
             *)  scalpel_vcf=$2 ; shift 2 ;;
         esac ;;
         
+    --strelka-snv )
+        case "$2" in
+            "") shift 2 ;;
+            *)  strelka_snv_vcf=$2 ; shift 2 ;
+        esac ;;
+
+    --strelka-indel )
+        case "$2" in
+            "") shift 2 ;;
+            *)  strelka_indel_vcf=$2 ; shift 2 ;;
+        esac ;;
+
     --ada-r-script )
         case "$2" in
             "") shift 2 ;;
@@ -174,7 +186,7 @@ while true; do
 
 done
 
-VERSION='2.3.0'
+VERSION='2.3.2'
 
 logdir=${outdir}/logs
 mkdir -p ${logdir}
@@ -200,6 +212,8 @@ fi
 if [[ $mutect_vcf ]];        then mutect_text="--mutect /mnt/${mutect_vcf}";                      fi
 if [[ $indelocator_vcf ]];   then indelocator_text="--indelocator /mnt/${indelocator_vcf}";       fi
 if [[ $mutect2_vcf ]];       then mutect2_text="--mutect2 /mnt/${mutect2_vcf}";                   fi
+if [[ $varscan_snv_vcf ]];   then varscan_snv_text="--varscan-snv /mnt/${varscan_snv_vcf}";       fi
+if [[ $varscan_indel_vcf ]]; then varscan_indel_text="--varscan-indel /mnt/${varscan_indel_vcf}"; fi
 if [[ $jsm_vcf ]];           then jsm_text="--jsm /mnt/${jsm_vcf}";                               fi
 if [[ $sniper_vcf ]];        then sniper_text="--sniper /mnt/${sniper_vcf}";                      fi
 if [[ $vardict_vcf ]];       then vardict_text="--vardict /mnt/${vardict_vcf}";                   fi
@@ -211,8 +225,8 @@ if [[ $strelka_snv_vcf ]];   then strelka_snv_text="--strelka-snv /mnt/${strelka
 if [[ $strelka_indel_vcf ]]; then strelka_indel_text="--strelka-indel /mnt/${strelka_indel_vcf}"; fi
 
 # SomaticSeq modes:
-if [[ $classifier_snv ]];   then classifier_snv_text="--classifier_snv ${classifier_snv}";       fi
-if [[ $classifier_indel ]]; then classifier_indel_text="--classifier_indel ${classifier_indel}"; fi
+if [[ $classifier_snv ]];   then classifier_snv_text="--classifier-snv ${classifier_snv}";       fi
+if [[ $classifier_indel ]]; then classifier_indel_text="--classifier-indel ${classifier_indel}"; fi
 if [[ $truth_snv ]];        then truth_snv_text="--truth-snv ${truth_snv}"                     ; fi
 if [[ $truth_indel ]];      then truth_indel_text="--truth-indel ${truth_indel}"               ; fi
 if [[ $ada_r_script ]];     then ada_r_script_text="--ada-r-script ${ada_r_script}"            ; fi
@@ -233,7 +247,7 @@ echo "" >> $sseq_script
 echo "docker pull lethalfang/somaticseq:${VERSION}" >> $sseq_script
 echo "" >> $sseq_script
 
-echo "docker run -v /:/mnt -u $UID --rm -i lethalfang/somaticseq:${VERSION} \\" >> $sseq_script
+echo "docker run --rm -v /:/mnt -u $UID -i lethalfang/somaticseq:${VERSION} \\" >> $sseq_script
 echo "/opt/somaticseq/SomaticSeq.Wrapper.sh \\" >> $sseq_script
 echo "--output-dir       /mnt/${outdir} \\" >> $sseq_script
 echo "--genome-reference /mnt/${HUMAN_REFERENCE} \\" >> $sseq_script
@@ -242,6 +256,8 @@ echo "--normal-bam       /mnt/${normal_bam} \\" >> $sseq_script
 echo "$mutect_text \\" >> $sseq_script
 echo "$indelocator_text \\" >> $sseq_script
 echo "$mutect2_text \\" >> $sseq_script
+echo "$varscan_snv_text \\" >> $sseq_script
+echo "$varscan_indel_text \\" >> $sseq_script
 echo "$jsm_text \\" >> $sseq_script
 echo "$sniper_text \\" >> $sseq_script
 echo "$vardict_text \\" >> $sseq_script
