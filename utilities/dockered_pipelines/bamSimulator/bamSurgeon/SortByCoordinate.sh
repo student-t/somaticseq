@@ -3,7 +3,7 @@
 
 set -e
 
-OPTS=`getopt -o o: --long output-dir:,tumor-bam:,normal-bam:,bam-out:,out-script:,standalone -n 'MergeTN.sh'  -- "$@"`
+OPTS=`getopt -o o: --long output-dir:,bam-out:,bam-in:,genome-reference:,out-script:,standalone -n 'SortByCoordinate.sh'  -- "$@"`
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -14,8 +14,7 @@ MYDIR="$( cd "$( dirname "$0" )" && pwd )"
 
 timestamp=$( date +"%Y-%m-%d_%H-%M-%S_%N" )
 
-keep_intermediates=0
-outSM='TN_Merged'
+seed=$( date +"%Y" )
 
 while true; do
     case "$1" in
@@ -24,23 +23,23 @@ while true; do
                 "") shift 2 ;;
                 *)  outdir=$2 ; shift 2 ;;
             esac ;;
-            
+
+        --bam-in )
+            case "$2" in
+                "") shift 2 ;;
+                *)  inbam=$2 ; shift 2 ;;
+            esac ;;
+
         --bam-out )
             case "$2" in
                 "") shift 2 ;;
                 *)  outbam=$2 ; shift 2 ;;
             esac ;;
 
-        --tumor-bam )
+        --genome-reference )
             case "$2" in
                 "") shift 2 ;;
-                *)  tbam=$2 ; shift 2 ;;
-            esac ;;
-
-        --normal-bam )
-            case "$2" in
-                "") shift 2 ;;
-                *)  nbam=$2 ; shift 2 ;;
+                *)  HUMAN_REFERENCE=$2 ; shift 2 ;;
             esac ;;
 
         --out-script )
@@ -57,6 +56,8 @@ while true; do
     esac
 done
 
+hg_dict=${HUMAN_REFERENCE%\.fa*}.dict
+
 logdir=${outdir}/logs
 mkdir -p ${logdir}
 
@@ -64,8 +65,9 @@ if [[ ${out_script_name} ]]
 then
     out_script="${out_script_name}"
 else
-    out_script="${logdir}/mergeBams.${timestamp}.cmd"    
+    out_script="${logdir}/sort.coordinates.${timestamp}.cmd"    
 fi
+
 
 if [[ $standalone ]]
 then
@@ -78,18 +80,13 @@ then
     echo 'set -e' >> $out_script
 fi
 
+
 echo "" >> $out_script
 
-# Merge the 2 BAM files
-echo "docker run -v /:/mnt -u $UID --rm -i lethalfang/bamsurgeon:1.0.0-2 \\" >> $out_script
-echo "java -Xmx6g -jar /usr/local/picard-tools-1.131/picard.jar MergeSamFiles \\" >> $out_script
-echo "I=/mnt/${nbam} \\" >> $out_script
-echo "I=/mnt/${tbam} \\" >> $out_script
-echo "ASSUME_SORTED=true \\" >> $out_script
-echo "CREATE_INDEX=true \\" >> $out_script
-echo "O=/mnt/${outdir}/${outbam}" >> $out_script
+echo "docker run -v /:/mnt -u $UID --rm -i lethalfang/samtools:1.3.1 \\" >> $out_script
+echo "samtools sort -m 4G --reference /mnt/${HUMAN_REFERENCE} \\" >> $out_script
+echo "-o /mnt/${outdir}/${outbam} /mnt/${inbam}" >> $out_script
 echo "" >> $out_script
 
-# Remove temp files
-echo "mv ${outdir}/${outbam%.bam}.bai ${outdir}/${outbam}.bai" >> $out_script
-echo "" >> $out_script
+echo "docker run -v /:/mnt -u $UID --rm -i lethalfang/samtools:1.3.1 \\" >> $out_script
+echo "samtools index /mnt/${outdir}/${outbam}" >> $out_script
